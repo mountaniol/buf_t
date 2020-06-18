@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <netdb.h>
+#include <errno.h>
 
 #include "buf_t.h"
 #include "buf_t_debug.h"
@@ -50,7 +51,7 @@ void buf_default_flags(buf_t_flags_t f)
 /* Set flag(s) of the buf */
 static err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 {
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 	buf->flags |= f;
 	return (EOK);
 }
@@ -58,7 +59,7 @@ static err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 /* Clear flag(s) of the buf */
 static err_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 {
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 	buf->flags &= ~f;
 	return (EOK);
 }
@@ -138,11 +139,11 @@ err_t buf_set_canary(buf_t *buf)
 {
 	buf_t_canary_t canary;
 	buf_t_canary_t *canary_p;
-	TESTP(buf, 0);
+	TESTP(buf, EINVAL);
 	if (!IS_BUF_CANARY(buf)) {
 		DE("The buffer doesn't have CANARY flag\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	canary = BUF_T_CANARY_CHAR_PATTERN;
@@ -153,7 +154,7 @@ err_t buf_set_canary(buf_t *buf)
 	if (0 != memcmp(canary_p, &canary, BUF_T_CANARY_SIZE)) {
 		DE("Can't set CANARY\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 	return (EOK);
 }
@@ -166,12 +167,12 @@ err_t buf_set_canary(buf_t *buf)
  */
 err_t buf_force_canary(buf_t *buf)
 {
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 
 	if (buf->used < BUF_T_CANARY_SIZE) {
 		DE("Buffer is to small for CANARY\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 
 	}
 
@@ -187,10 +188,11 @@ err_t buf_force_canary(buf_t *buf)
 err_t buf_test_canary(buf_t *buf)
 {
 	buf_t_canary_t canary = BUF_T_CANARY_CHAR_PATTERN;
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 
+	/* */
 	if (!IS_BUF_CANARY(buf)) {
-		return (EOK);
+		return (ECANCELED);
 	}
 
 	if (0 == memcmp(buf->data + buf->room, &canary, BUF_T_CANARY_SIZE)) {
@@ -200,14 +202,14 @@ err_t buf_test_canary(buf_t *buf)
 	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf->room));
 
 	TRY_ABORT();
-	return (EBAD);
+	return (ECANCELED);
 }
 
 /* Extract canary word from the buf */
 buf_t_canary_t buf_get_canary(buf_t *buf)
 {
 	buf_t_canary_t *canary_p;
-	TESTP(buf, 0);
+	TESTP(buf, (buf_t_canary_t)-1);
 	if (!IS_BUF_CANARY(buf)) {
 		DE("The buffer doesn't have canary flag\n");
 		return (EOK);
@@ -234,14 +236,14 @@ err_t buf_is_valid(buf_t *buf)
 	if (NULL == buf) {
 		DE("Invalid: got NULL pointer\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EINVAL);
 	}
 
 	/* buf->used always <= buf->room */
 	if (buf->used > buf->room) {
 		DE("Invalid buf: buf->used > buf->room\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/* The buf->data may be NULL if and only if both buf->used and buf->room == 0; However, we don't
@@ -249,21 +251,21 @@ err_t buf_is_valid(buf_t *buf)
 	if (NULL == buf->data && buf->room > 0) {
 		DE("Invalid buf: buf->data == NULL but buf->room > 0 (%d)\n", buf->room);
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/* And vice versa: if buf->data != NULL the buf->room must be > 0 */
 	if (NULL != buf->data && 0 == buf->room) {
 		DE("Invalid buf: buf->data != NULL but buf->room == 0\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/* If the buf is string than room must be > used */
 	if (IS_BUF_STRING(buf) && (NULL != buf->data) && (buf->room <= buf->used)) {
 		DE("Invalid STRING buf: buf->used (%d) >= buf->room (%d)\n", buf->used, buf->room);
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/* For string buffers only: check that the string is null terminated */
@@ -271,7 +273,7 @@ err_t buf_is_valid(buf_t *buf)
 	if (IS_BUF_STRING(buf) && (NULL != buf->data) && ('\0' != *(buf->data + buf->used))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	if (buf->room > 0 && IS_BUF_CANARY(buf) && (EOK != buf_test_canary(buf))) {
@@ -279,14 +281,14 @@ err_t buf_is_valid(buf_t *buf)
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/* In Read-Only buffer buf->room must be == bub->used */
 	if (IS_BUF_RO(buf) && (buf->room != buf->used)) {
 		DE("Warning: in Read-Only buffer buf->used (%d) != buf->room (%d)\n", buf->used, buf->room);
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	DDD0("Buffer is valid\n");
@@ -294,10 +296,11 @@ err_t buf_is_valid(buf_t *buf)
 	return (EOK);
 }
 
-int buf_is_string(buf_t *buf) {
-	TESTP(buf, -1);
+int buf_is_string(buf_t *buf)
+{
+	TESTP(buf, EINVAL);
 	if (IS_BUF_STRING(buf)) {
-		return (0);
+		return (EOK);
 	}
 	return (1);
 }
@@ -406,14 +409,14 @@ int buf_is_string(buf_t *buf) {
 
 err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len)
 {
-	TESTP(buf, EBAD);
-	TESTP(data, EBAD);
+	TESTP(buf, EINVAL);
+	TESTP(data, EINVAL);
 
 	/* Don't replace data in read-only buffer */
 	if (IS_BUF_RO(buf)) {
 		DE("Warning: tried to replace data in Read-Only buffer\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EACCES);
 	}
 
 	buf->data = data;
@@ -428,13 +431,16 @@ err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size
 	return (EOK);
 }
 
-/* Set data into read-only buffer: no changes after that */
+/* Set data into read-only buffer: no changes allowed after that */
 err_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 {
-	TESTP(buf, EBAD);
+	int rc;
+	TESTP(buf, EINVAL);
 
-	if (EOK != buf_set_data(buf, data, size, size)) {
+	rc = buf_set_data(buf, data, size, size);
+	if (EOK != rc) {
 		DE("Can't set data\n");
+		return (rc);
 	}
 
 	buf_unmark_canary(buf);
@@ -475,14 +481,14 @@ err_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 	if (NULL == buf || 0 == size) {
 		DE("Bad arguments: buf == NULL (%p) or size == 0 (%zu)\b", buf, size);
 		TRY_ABORT();
-		return (EBAD);
+		return (EINVAL);
 	}
 
 	/* We don't free read-only buffer's data */
 	if (IS_BUF_RO(buf)) {
 		DE("Warning: tried add room to Read-Only buffer\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EACCES);
 	}
 
 	if (IS_BUF_CANARY(buf)) {
@@ -495,7 +501,7 @@ err_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 	if (NULL == tmp) {
 		DE("Realloc failed\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ENOMEM);
 	}
 
 	/* Case 2: realloc succidded, new memory returned */
@@ -517,6 +523,7 @@ err_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 	if (IS_BUF_CANARY(buf) && EOK != buf_set_canary(buf)) {
 		DE("Can't set CANARY\b");
 		TRY_ABORT();
+		return (ENOKEY);
 	}
 
 	BUF_TEST(buf);
@@ -528,7 +535,7 @@ err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
 	if (NULL == buf) {
 		DE("Got NULL\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EINVAL);
 	}
 
 	if (buf->used + expect <= buf->room) {
@@ -540,7 +547,7 @@ err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
 
 err_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 {
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 
 	if (EOK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
@@ -550,7 +557,7 @@ err_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 	if (IS_BUF_RO(buf)) {
 		DE("Warning: tried to free Read Only buffer\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EACCES);
 	}
 
 	if (buf->data) {
@@ -566,7 +573,7 @@ err_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 
 err_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 {
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 
 	if (EOK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
@@ -576,13 +583,13 @@ err_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	if (IS_BUF_RO(buf)) {
 		DE("Warning: tried to free Read Only buffer\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EACCES);
 	}
 
 	if (EOK != buf_clean(buf)) {
 		DE("Can't clean buffer, stopped operation, returning error\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	TFREE_SIZE(buf, sizeof(buf_t));
@@ -597,13 +604,13 @@ err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t
 		DE("Wrong argument(s): b = %p, buf = %p, size = %zu\n", buf, new_data, size);
 		/*@end@*/
 		TRY_ABORT();
-		return (EBAD);
+		return (EINVAL);
 	}
 
 	if (IS_BUF_RO(buf)) {
 		DE("Tryed to add data to Read Only buffer\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (EACCES);
 	}
 
 	new_size = size;
@@ -617,7 +624,7 @@ err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t
 	if (0 != buf_test_room(buf, new_size)) {
 		DE("Can't add room into buf_t\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ENOMEM);
 	}
 
 	memcpy(buf->data + buf->used, new_data, size);
@@ -626,17 +633,17 @@ err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t
 	return (EOK);
 }
 
-uint32_t buf_used(/*@null@*/buf_t *buf)
+ssize_t buf_used(/*@null@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	TESTP(buf, (uint32_t)-1);
+	TESTP(buf, EINVAL);
 	return (buf->used);
 }
 
-uint32_t buf_room(/*@null@*/buf_t *buf)
+ssize_t buf_room(/*@null@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	TESTP(buf, (uint32_t)-1);
+	TESTP(buf, EINVAL);
 	return (buf->room);
 }
 
@@ -645,7 +652,7 @@ err_t buf_pack(/*@null@*/buf_t *buf)
 	void   *tmp     = NULL;
 	size_t new_size = -1;
 
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 
 	/*** If buffer is empty we have nothing to do */
 
@@ -657,7 +664,7 @@ err_t buf_pack(/*@null@*/buf_t *buf)
 
 	if (EOK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - can't proceed\n");
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/*** Should we really pack it? */
@@ -719,18 +726,18 @@ err_t buf_pack(/*@null@*/buf_t *buf)
 err_t buf_detect_used(/*@null@*/buf_t *buf)
 {
 	int used;
-	TESTP(buf, EBAD);
+	TESTP(buf, EINVAL);
 
 	if (buf_is_valid(buf)) {
 		DE("Buffer is invalid, can't proceed\n");
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	/* If the buf is empty - return with error */
 	if (buf->room == 0) {
 		DE("Tryed to detect used in empty buffer?\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ECANCELED);
 	}
 
 	used = buf->room;
@@ -855,13 +862,15 @@ ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int 
 	int     rc       = EBAD;
 	ssize_t received = -1;
 
+	TESTP(buf, EINVAL);
+
 	/* Test that we have enough room in the buffer */
 	rc = buf_test_room(buf, expected);
 
 	if (EOK != rc) {
 		DE("Can't allocate enough room in buf\n");
 		TRY_ABORT();
-		return (EBAD);
+		return (ENOMEM);
 	}
 
 	received = recv(socket, buf->data + buf->used, expected, flags);

@@ -113,6 +113,7 @@
 typedef enum {
 	EBAD = -1,  /* Error status */
 	EOK = 0,       /* Success status */
+
 	EAGN = 1, /* "Try again" status */
 } err_t;
 
@@ -364,22 +365,22 @@ extern err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
- * @func uint32_t buf_used(buf_t *buf)
+ * @func ssize_t buf_used(buf_t *buf)
  * @brief Return value of buf->used
  * @param buf_t * buf
  * @return uint32_t buf->used; (uint32_t) -1 on error
  */
-extern uint32_t buf_used(/*@null@*/buf_t *buf);
+extern ssize_t buf_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
- * @func uint32_t buf_room(buf_t *buf)
+ * @func ssize_t buf_room(buf_t *buf)
  * @brief Value of buf->room
  * @param buf_t * buf
  * @return uint32_t
  * @details of buf->room, (uint32_t) -1 on error
  */
-extern uint32_t buf_room(/*@null@*/buf_t *buf);
+extern ssize_t buf_room(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -431,7 +432,8 @@ extern int buf_restore_flags(buf_t_flags_t flags);
  * buffer containing string
  * @param buf_t * buf Buf to mark
  *
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if
+ * buf in NULL
  */
 extern err_t buf_mark_string(buf_t *buf);
 
@@ -440,7 +442,7 @@ extern err_t buf_mark_string(buf_t *buf);
  * @func err_t buf_mark_ro(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing read-only data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, < 0 an an error
+ * @return err_t EOK on success, EINVAL if buf is NULL
  */
 extern err_t buf_mark_ro(buf_t *buf);
 
@@ -449,7 +451,7 @@ extern err_t buf_mark_ro(buf_t *buf);
  * @func err_t buf_mark_compresed(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing compressed data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, < 0 an an error
+ * @return err_t EOK on success, EINVAL if buf is NULL
  */
 extern err_t buf_mark_compresed(buf_t *buf);
 
@@ -458,7 +460,7 @@ extern err_t buf_mark_compresed(buf_t *buf);
  * @func err_t buf_mark_encrypted(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing encrypted data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, < 0 an an error
+ * @return err_t EOK on success, EINVAL if buf is NULL
  */
 extern err_t buf_mark_encrypted(buf_t *buf);
 
@@ -467,7 +469,7 @@ extern err_t buf_mark_encrypted(buf_t *buf);
  * @func err_t buf_mark_canary(buf_t *buf)
  * @brief Mark (set flag) that the buf has canary word in the end of the buffer
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, < 0 an an error
+ * @return err_t EOK on success, EINVAL if buf is NULL
  */
 extern err_t buf_mark_canary(buf_t *buf);
 
@@ -476,7 +478,7 @@ extern err_t buf_mark_canary(buf_t *buf);
  * @func err_t buf_mark_canary(buf_t *buf)
  * @brief Mark (set flag) that the buf has CRC word in the end of the buffer
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, < 0 an an error
+ * @return err_t EOK on success, EINVAL if buf is NULL
  */
 extern err_t buf_mark_crc(buf_t *buf);
 
@@ -485,94 +487,96 @@ extern err_t buf_mark_crc(buf_t *buf);
  * @func err_t buf_unmark_string(buf_t *buf)
  * @brief Remove "string" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if buf is NULL
  */
-err_t buf_unmark_string(buf_t *buf);
+extern err_t buf_unmark_string(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_unmark_ro(buf_t *buf)
  * @brief Remove "read-only" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if buf is NULL
  */
-err_t buf_unmark_ro(buf_t *buf);
+extern err_t buf_unmark_ro(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_unmark_compresed(buf_t *buf)
  * @brief Remove "compressed" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if buf is NULL
  */
-err_t buf_unmark_compresed(buf_t *buf);
+extern err_t buf_unmark_compresed(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_unmark_encrypted(buf_t *buf)
  * @brief Remove "encryptes" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if buf is NULL
  */
-err_t buf_unmark_encrypted(buf_t *buf);
+extern err_t buf_unmark_encrypted(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_unmark_canary(buf_t *buf)
  * @brief Remove "canary" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if buf is NULL
  */
-err_t buf_unmark_canary(buf_t *buf);
+extern err_t buf_unmark_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_unmark_crc(buf_t *buf)
  * @brief Remove "crc" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, < 0 on error
+ * @return err_t OK on success, EINVAL if buf is NULL
  */
-err_t buf_unmark_crc(buf_t *buf);
+extern err_t buf_unmark_crc(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_set_canary(buf_t *buf)
  * @brief Set CANARY maer in the end of the buffer. The buf_t must be marked as CANARY.
  * @param buf_t * buf Buffer to set CANARy pattern
- * @return err_t EOK on success, < 0 on error
+ * @return err_t EOK on success, EINVAL if buf is NULL, ECANCELED if buf does not have CANARY or if 
+ *  	   CANARY pattern is bad right after it set
  * @details If the buf doesn't have CANARY flag it will return an error.
  */
-err_t buf_set_canary(buf_t *buf);
+extern err_t buf_set_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_force_canary(buf_t *buf)
  * @brief Set CAANRY mark in the end of the buffer and apply ANARY flag on the buffer
  * @param buf_t * buf Buffer to set CANARY
- * @return err_t EOK on success, < 0 on error
+ * @return err_t EOK on success, EINVAL if buf is NULL, or one of but_set_canary errors
  * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer 
  *  		will be replaced with CANARY mark. You must reserve / clean the last byte for it.
  */
-err_t buf_force_canary(buf_t *buf);
+extern err_t buf_force_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_test_canary(buf_t *buf)
  * @brief Check that CANARY mark is untouched
  * @param buf_t * buf Buffer to check
- * @return err_t EOK if CANARY untouched, < o if the canary is damaged
+ * @return err_t EOK if CANARY untouched, EINVAL if buf is NULL, ECANCELED if buf not marked as 
+ *  	   CANARY buffer or if canary mark is invalid 
  */
-err_t buf_test_canary(buf_t *buf);
+extern err_t buf_test_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func buf_t_canary_t buf_get_canary(buf_t *buf)
  * @brief Return current value of CANARY byte
  * @param buf_t * buf Buffer to read CANARY
- * @return buf_t_canary_t Value of CANARY byte
+ * @return buf_t_canary_t Value of CANARY byte, ((buf_t_canary_t)-1) on error
  * @details You may want to use this function if CANARY is damaged
  */
-buf_t_canary_t buf_get_canary(buf_t *buf);
+extern buf_t_canary_t buf_get_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -580,16 +584,16 @@ buf_t_canary_t buf_get_canary(buf_t *buf);
  * @brief Print flags of the buffer. Useful for debug
  * @param buf_t * buf Buf to read flags
  */
-void buf_print_flags(buf_t *buf);
+extern void buf_print_flags(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func int buf_is_string(buf_t *buf)
  * @brief Test if the buffer is a string buffer
  * @param buf_t * buf Buffer to check
- * @return int EOK if it is a string buffer, > 0 if not, < 0 in error
+ * @return int EOK if it is a string buffer, 1 if not, EINVAL if buf is NULL
  */
-int buf_is_string(buf_t *buf);
+extern int buf_is_string(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -597,9 +601,10 @@ int buf_is_string(buf_t *buf);
  * @brief If you played with the buffer's data (for example, copied / replaced tezt in the
  *  	  buf->data) this function will help to detect right buf->used value.
  * @param buf_t * buf Buffer to analyze
- * @return err_tEOK on succes + buf->used set to a new value, < 0 on error
+ * @return err_t EOK on succes + buf->used set to a new value, EINVAL is buf is NULL, ECANCELED if 
+ *  	   buffer is invalid or if buffer is empty, 
  */
-err_t buf_detect_used(/*@null@*/buf_t *buf);
+extern err_t buf_detect_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -609,9 +614,10 @@ err_t buf_detect_used(/*@null@*/buf_t *buf);
  * @param const int socket Opened socket
  * @param const size_t expected How many bytes expected
  * @param const int flags Flags to pass to recv() function
- * @return ssize_t Number of received bytes, < 0 on error
+ * @return ssize_t Number of received bytes, EINVAL if buf is NULL, else returns status of recv() 
+ *  	   function
  */
-ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags);
+extern ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -621,7 +627,7 @@ ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int 
  * @param size_t size_without_0 Length of the string without terminating '\0'
  * @return buf_t* New buf_t containing the "str"
  */
-/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0);
+extern  /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0);
 
 /* Additional defines */
 #ifdef BUF_DEBUG
