@@ -263,7 +263,7 @@ void test_buf_pack(void)
 	buf_t  *buf          = NULL;
 	char   *buf_data     = NULL;
 	size_t buf_data_size = 256;
-	int    i;
+	size_t i;
 	time_t current_time  = time(0);
 	srandom((unsigned int)current_time);
 
@@ -315,7 +315,7 @@ void test_buf_pack(void)
 		PFAIL("buf_pack");
 		abort();
 	}
-	
+
 	PSTEP("Compared memory");
 
 	/* Now we pack the buf */
@@ -347,6 +347,131 @@ void test_buf_pack(void)
 	PSUCCESS("buf_pack");
 }
 
+
+void test_buf_canary(void)
+{
+	buf_t         *buf          = NULL;
+	char          *buf_data     = NULL;
+	size_t        buf_data_size = 256;
+	size_t        i;
+	time_t        current_time  = time(0);
+	buf_t_flags_t flags;
+
+	srandom((unsigned int)current_time);
+
+	PSPLITTER();
+
+	PSTART("buf_canary");
+
+	flags = buf_save_flags();
+	buf_unset_abort();
+
+	buf = buf_new(0);
+	if (NULL == buf) {
+		PFAIL("buf_string: Can't allocate buf");
+		abort();
+	}
+
+	if (EOK != buf_mark_canary(buf)) {
+		PFAIL("buf_canary: Can't set CANARY flag");
+		abort();
+	}
+
+	PSTEP("Allocated buffer");
+
+	buf_data = malloc(256);
+	if (NULL == buf_data) {
+		printf("Can't allocate buffer\n");
+		abort();
+	}
+
+	PSTEP("Allocated local buffer for random data");
+
+	for (i = 0; i < buf_data_size; i++) {
+		char randomNumber = (char)random();
+		buf_data[i] = randomNumber;
+	}
+
+	PSTEP("Filled local buffer with random data");
+
+	if (EOK != buf_add(buf, buf_data, buf_data_size - 1)) {
+		PFAIL("buf_pack: can't add");
+		abort();
+	}
+
+	PSTEP("Added buffer into buf_t");
+
+	if (buf->used != buf_data_size - 1) {
+		PFAIL("buf_pack");
+		abort();
+	}
+
+	/* Compare memory */
+	if (0 != memcmp(buf->data, buf_data, buf_data_size - 1)) {
+		PFAIL("buf_canary: buffer is wrong");
+		abort();
+	}
+
+	PSTEP("Compared memory");
+
+	/* Test canary */
+	if (EOK != buf_test_canary(buf)) {
+		PFAIL("buf_canary: bad canary");
+		abort();
+	}
+
+	PSTEP("Canary word is OK for the buffer");
+
+	/* Now we copy the full buffer into buf->data and such we break the canary pattern */
+	memcpy(buf->data, buf_data, buf_data_size);
+
+	PSTEP("Corrupted buf->data");
+
+	/* Test canary: we expect it to be wrong */
+	if (EOK == buf_test_canary(buf)) {
+		PFAIL("buf_canary: good canary but must be bad");
+		abort();
+	}
+
+	PSTEP("The canary is broken. It is what expected");
+
+	if (EOK != buf_set_canary(buf)) {
+		PFAIL("buf_canary: can't set canary on the buffer");
+		abort();
+	}
+
+	PSTEP("Fixed canary");
+
+	/* Test canary again */
+	if (EOK != buf_test_canary(buf)) {
+		PFAIL("buf_canary: bad canary but must be good");
+		abort();
+	}
+
+	PSTEP("Now canary is OK");
+
+	/* Run buf validation */
+	if (EOK != buf_is_valid(buf)) {
+		PFAIL("buf_canary: buffer is not valid");
+		abort();
+	}
+
+	PSTEP("Buffer is valid");
+
+	if (EOK != buf_free(buf)) {
+		PFAIL("buf_canary: buf_free returned not OK");
+		abort();
+	}
+
+	PSTEP("Buffer freed");
+
+	free(buf_data);
+
+	buf_restore_flags(flags);
+
+	PSUCCESS("buf_canary");
+}
+
 int main()
 {
 	/* Abort on any error */
@@ -364,6 +489,8 @@ int main()
 	test_buf_string(1024);
 	test_buf_pack_string();
 	test_buf_pack();
+
+	test_buf_canary();
 
 	return (0);
 }

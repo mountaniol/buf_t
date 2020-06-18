@@ -16,6 +16,17 @@ static buf_t_flags_t g_flags;
 
 #define TRY_ABORT() do{ if(g_abort_on_err) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
 
+buf_t_flags_t buf_save_flags()
+{
+	return (g_flags);
+}
+
+int buf_restore_flags(buf_t_flags_t flags)
+{
+	g_flags = flags;
+}
+
+
 void buf_set_abort(void)
 {
 	DDD("buf_t: enabled 'abort on error' state\n");
@@ -37,7 +48,7 @@ void buf_default_flags(buf_t_flags_t f)
 }
 
 /* Set flag(s) of the buf */
-err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
+static err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EBAD);
 	buf->flags |= f;
@@ -45,7 +56,7 @@ err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 }
 
 /* Clear flag(s) of the buf */
-err_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
+static err_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EBAD);
 	buf->flags &= ~f;
@@ -186,7 +197,7 @@ err_t buf_test_canary(buf_t *buf)
 		return (EOK);
 	}
 
-	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, *(buf->data + buf->room));
+	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf->room));
 
 	TRY_ABORT();
 	return (EBAD);
@@ -207,7 +218,7 @@ buf_t_canary_t buf_get_canary(buf_t *buf)
 	return (*canary_p);
 }
 
-static void buf_print_flags(buf_t *buf)
+void buf_print_flags(buf_t *buf)
 {
 	if (IS_BUF_STRING(buf)) DDD("Buffer is STRING\n");
 	if (IS_BUF_RO(buf)) DDD("Buffer is READONLY\n");
@@ -283,11 +294,15 @@ err_t buf_is_valid(buf_t *buf)
 	return (EOK);
 }
 
-#ifdef BUF_DEBUG
-/*@null@*/ buf_t *_buf_new(size_t size, const char *func, const char *file, int line)
-#else
+int buf_is_string(buf_t *buf) {
+	TESTP(buf, -1);
+	if (IS_BUF_STRING(buf)) {
+		return (0);
+	}
+	return (1);
+}
+
 /*@null@*/ buf_t *buf_new(size_t size)
-#endif
 {
 	/*@temp@*/buf_t *buf;
 
@@ -300,7 +315,7 @@ err_t buf_is_valid(buf_t *buf)
 	}
 
 	buf->flags = g_flags;
-	
+
 	/* If no buffer passed, but size given - allocate new buffer */
 	if (size > 0) {
 
@@ -331,28 +346,13 @@ err_t buf_is_valid(buf_t *buf)
 		return (NULL);
 	}
 
-	/* If debug is on we also save where this buffer was  allocated */
-	#ifdef BUF_DEBUG
-	buf->filename = file;
-	buf->func = func;
-	buf->line = line;
-	#endif
 	return (buf);
 }
 
-
-#ifdef BUF_DEBUG
-/*@null@*/ buf_t *_buf_string(size_t size, const char *func, const char *file, int line)
-#else
-/*@null@*/ buf_t *buf_string(/*@null@*/char *data, size_t size)
-#endif
+/*@null@*/ buf_t *buf_string(size_t size)
 {
 	buf_t *buf = NULL;
-	#ifdef BUF_DEBUG
-	buf = _buf_new(size, func, file, line);
-	#else
 	buf = buf_new(size);
-	#endif
 
 	if (NULL == buf) {
 		DE("buf allocation failed\n");
@@ -626,26 +626,6 @@ err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t
 	return (EOK);
 }
 
-#if 0
-err_t buf_add_null(/*@null@*/buf_t *buf){
-	if (NULL == buf) {
-		/*@ignore@*/
-		DE("Wrong params: b = %p\n", buf);
-		/*@end@*/
-		return (EBAD);
-	}
-
-	if (0 != buf_test_room(buf, buf->used + 1)) {
-		DE("Can't add room into buf_t\n");
-		return (EBAD);
-	}
-
-	memset(buf->data + buf->used, '\0', 1);
-	buf->used++;
-	return (EOK);
-}
-#endif
-
 uint32_t buf_used(/*@null@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
@@ -869,7 +849,7 @@ buf_t *buf_sprintf(const char *format, ...)
 	return (buf);
 }
 
-/* Recive from socket; add to the end of the buf; return number of received bytes */
+/* Receive from socket; add to the end of the buf; return number of received bytes */
 ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags)
 {
 	int     rc       = EBAD;

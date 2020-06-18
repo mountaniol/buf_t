@@ -208,40 +208,29 @@ typedef uint8_t buf_t_canary_t;
 /* How much bytes will be transmitted to send buf_t + its actual data */
 #define BUF_T_NET_SEND_SIZE(b) (BUF_T_STRUCT_NET_SIZE + b->used)
 
-
 /**
  * @author Sebastian Mountaniol (16/06/2020)
  * @func void buf_set_abort(void)
  * @brief set "abort on errors" state
- *
  * @param void
- * @details
- *
  */
-void buf_set_abort(void);
-
+extern void buf_set_abort(void);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
  * @func void buf_unset_abort(void)
  * @brief Unset "abort on errors" state
- *
  * @param void
- * @details
- *
  */
-void buf_unset_abort(void);
+extern void buf_unset_abort(void);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
  * @func void buf_default_flags(buf_t_flags_t f)
  * @brief Set default buf_t flags. Will be applied for every allocated new buf_t struct.
- *
  * @param buf_t_flags_t f
- * @details
- *
  */
-void buf_default_flags(buf_t_flags_t f);
+extern void buf_default_flags(buf_t_flags_t f);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -253,88 +242,58 @@ void buf_default_flags(buf_t_flags_t f);
  * @param size_t size Size of the new 'data'
  * @param size_t len Length of data in the buffer, user must provide it
  * @return err_t EOK on success, EBAD on failure
- * @details
- *
  */
-err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len);
-
+extern err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
  * @func err_t buf_is_valid(buf_t *buf)
  * @brief Test bufer validity
- *
  * @param buf_t * buf
- *
  * @return err_t
- * @details
- *
  */
-err_t buf_is_valid(buf_t *buf);
+extern err_t buf_is_valid(buf_t *buf);
 
 /**
  * @func buf_t* buf_new(size_t size)
- * @brief Allocate buf_t. A new  buffer of 'size' will be
+ * @brief Allocate buf_t. A new buffer of 'size' will be
  *    allocated.
  * @author se (03/04/2020)
  * @param size_t size Data buffer size, may be 0
  * @return buf_t* New buf_t structure.
  */
-
-#ifdef BUF_DEBUG
-/*@null@*/ buf_t *_buf_new(size_t size, const char *func, const char *file, int line);
-#define buf_new(a) _buf_new(a, __func__, __FILE__, __LINE__)
-#else
-/*@null@*/ buf_t *buf_new(size_t size);
-#endif
+extern /*@null@*/ buf_t *buf_new(size_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
  * @func buf_t* buf_string(size_t size)
- * @brief Allocate buffer and mark it as STRING 
- *
+ * @brief Allocate buffer and mark it as STRING
  * @param size_t size
- *
  * @return buf_t*
- * @details
- *
  */
-#ifdef BUF_DEBUG
-/*@null@*/ buf_t *_buf_string(size_t size, const char *func, const char *file, int line);
-#define buf_string(a) _buf_string(a, __func__, __FILE__, __LINE__)
-#else
-/*@null@*/ buf_t *buf_string(size_t size);
-#endif
-
+extern /*@null@*/ buf_t *buf_string(size_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
  * @func err_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
  * @brief Set a data into buffer and lock the buffer, i.e. turn the buf into "read-only".
- *
  * @param buf_t  * buf
  * @param char   * data
  * @param size_t size
- *
  * @return err_t
- * @details
- *
  */
-err_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
+extern err_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
+
 /**
  * @author Sebastian Mountaniol (01/06/2020)
  * @func void* buf_steal_data(buf_t *buf)
  * @brief 'Steal' data from buffer. After this operation the internal buffer 'data' returned to
  *    caller. After this function buf->data set to NULL, buf->len = 0, buf->size = 0
- *
  * @param buf_t * buf Buffer to extract data buffer
- *
  * @return void* Data buffer pointer on success, NULL on error. Warning: if the but_t did not have a
  * 			 buffer (i.e. buf->data was NULL) the NULL will be returned.
- * @details
- *
  */
-/*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf);
+extern /*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -342,177 +301,346 @@ err_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
  * @brief Return data buffer from the buffer and release the buffer. After this operation the buf_t
  *    structure will be completly destroyed. WARNING: disregarding to the return value the buf_t
  *    will be destoyed!
- *
  * @param buf_t * buf Buffer to extract data
- *
  * @return void* Pointer to buffer on success (buf if the buffer is empty NULL will be returned),
- * 			 NULL on error (and the 'buf' destroyed).
- * @details
- *
  */
-/*@null@*/void *buf_2_data(/*@null@*/buf_t *buf);
+extern /*@null@*/void *buf_2_data(/*@null@*/buf_t *buf);
 
 /**
  * @brief Remove data from buffer, set buf->room = buf->len = 0
  * @func err_t buf_clean(buf_t *buf)
  * @author se (16/05/2020)
- *
  * @param buf Buffer to remove data in
- *
  * @return err_t EOK if all right, EBAD on error
  */
-err_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
+extern err_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
 
 /**
- *
  * @func int buf_room(buf_t *buf, size_t size)
  * @brief Allocate additional 'size' in the tail of buf_t data
  *    buffer; existing content kept unchanged. The new
  *    memory will be cleaned. The 'size' argument must be >
  *    0. For removing buf->data use 'buf_free_force()'
- *
  * @author se (06/04/2020)
- *
  * @param buf_t  * buf Buffer to grow
  * @param size_t size How many byte to add
- *
  * @return int
  */
 extern err_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
 
 /**
- *
  * @func int buf_test_room(buf_t *buf, size_t expect)
  * @brief The function accept size in bytes that caller wants to
  *    add into buf. It check if additional room needed. If
  *    yes, calls buf_room() to increase room. The 'expect'
  *    ca be == 0
- *
  * @author se (06/04/2020)
- *
  * @param buf_t  * buf Buffer to test
  * @param size_t expect How many bytes will be added
- *
  * @return int EOK on success, EBAD on failure
  */
 extern err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
 
 /**
- *
  * @func int buf_t_free_force(buf_t *buf)
  * @brief Free buf; if buf->data is not empty, free buf->data
- *
  * @author se (03/04/2020)
- *
  * @param buf_t * buf Buffer to remove
- *
  * @return int EOK on success, EBAD on failure
  */
 extern err_t buf_free(/*@only@*//*@null@*/buf_t *buf);
 
 /**
- *
  * @func int buf_add(buf_t *b, const char *buf, const size_t size)
  * @brief Add buffer "buf" of size "size" to the tail of buf_t.
  *    The buf_t memory added if it needed.
- *
  * @author se (06/04/2020)
- *
  * @param buf_t * b
  * @param const char* buf
  * @param const size_t size
- *
  * @return int
  */
-err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size);
-
-#if 0
-/**
- * @author Sebastian Mountaniol (01/06/2020)
- * @func err_t buf_add_null(buf_t *b)
- * @brief Add '\0' terminator to the buffer; for easier string manupulations
- *
- * @param buf_t * b Buffer containing data
- *
- * @return err_t EOK on success, EBAD on error
- * @details
- *
- */
-err_t buf_add_null(/*@null@*/buf_t *buf);
-#endif
+extern err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
  * @func uint32_t buf_used(buf_t *buf)
  * @brief Return value of buf->used
- *
  * @param buf_t * buf
- *
  * @return uint32_t buf->used; (uint32_t) -1 on error
- * @details
- *
  */
-uint32_t buf_used(/*@null@*/buf_t *buf);
+extern uint32_t buf_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
  * @func uint32_t buf_room(buf_t *buf)
  * @brief Value of buf->room
- *
  * @param buf_t * buf
- *
  * @return uint32_t
  * @details of buf->room, (uint32_t) -1 on error
- *
  */
-uint32_t buf_room(/*@null@*/buf_t *buf);
+extern uint32_t buf_room(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
  * @func err_t buf_pack(buf_t *buf)
  * @brief Shrink buf->data to buf->len. We may use this function when we finished with the buf_t and
  *    its size won't change. We release unused memory with this function.
- *
  * @param buf_t * buf Buffer to pack
- *
  * @return err_t EOK on success, EBAD on a failure. If EBAD returned the buf->data is untouched, we
  * 			 may use it.
- * @details
- *
  */
-err_t buf_pack(/*@null@*/buf_t *buf);
+extern err_t buf_pack(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (02/06/2020)
  * @func buf_t* buf_sprintf(char *format, ...)
  * @brief sprintf into buf_t
- *
  * @param char * format Format (like in printf first argument )
- *
  * @return buf_t*
- * @details
- *
  */
-buf_t *buf_sprintf(const char *format, ...);
+extern buf_t *buf_sprintf(const char *format, ...);
 
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func buf_t_flags_t buf_save_flags(void)
+ * @brief Return current value of gloabs buf_t flags (the flags added to every new allocate buf_t)
+ * @param void
+ * @return buf_t_flags_t - value of global buf_t flags
+ * @details
+ */
+extern buf_t_flags_t buf_save_flags(void);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func int buf_restore_flags(buf_t_flags_t flags)
+ * @brief Restore global buf_t flags
+ * @param buf_t_flags_t flags - flags to set
+ * @return int EOK on success
+ * @details See buf_save_flags()
+ */
+extern int buf_restore_flags(buf_t_flags_t flags);
+
+/**** Mark / Unmark flags ***/
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_string(buf_t *buf)
+ * @brief Mark (set flag) the buf as a
+ * buffer containing string
+ * @param buf_t * buf Buf to mark
+ *
+ * @return err_t OK on success, < 0 on error
+ */
+extern err_t buf_mark_string(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_ro(buf_t *buf)
+ * @brief Mark (set flag) the buf as a buffer containing read-only data
+ * @param buf_t * buf Buffer to mark
+ * @return err_t EOK on success, < 0 an an error
+ */
+extern err_t buf_mark_ro(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_compresed(buf_t *buf)
+ * @brief Mark (set flag) the buf as a buffer containing compressed data
+ * @param buf_t * buf Buffer to mark
+ * @return err_t EOK on success, < 0 an an error
+ */
+extern err_t buf_mark_compresed(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_encrypted(buf_t *buf)
+ * @brief Mark (set flag) the buf as a buffer containing encrypted data
+ * @param buf_t * buf Buffer to mark
+ * @return err_t EOK on success, < 0 an an error
+ */
+extern err_t buf_mark_encrypted(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_canary(buf_t *buf)
+ * @brief Mark (set flag) that the buf has canary word in the end of the buffer
+ * @param buf_t * buf Buffer to mark
+ * @return err_t EOK on success, < 0 an an error
+ */
+extern err_t buf_mark_canary(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_canary(buf_t *buf)
+ * @brief Mark (set flag) that the buf has CRC word in the end of the buffer
+ * @param buf_t * buf Buffer to mark
+ * @return err_t EOK on success, < 0 an an error
+ */
+extern err_t buf_mark_crc(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_unmark_string(buf_t *buf)
+ * @brief Remove "string" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t OK on success, < 0 on error
+ */
+err_t buf_unmark_string(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_unmark_ro(buf_t *buf)
+ * @brief Remove "read-only" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t OK on success, < 0 on error
+ */
+err_t buf_unmark_ro(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_unmark_compresed(buf_t *buf)
+ * @brief Remove "compressed" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t OK on success, < 0 on error
+ */
+err_t buf_unmark_compresed(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_unmark_encrypted(buf_t *buf)
+ * @brief Remove "encryptes" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t OK on success, < 0 on error
+ */
+err_t buf_unmark_encrypted(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_unmark_canary(buf_t *buf)
+ * @brief Remove "canary" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t OK on success, < 0 on error
+ */
+err_t buf_unmark_canary(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_unmark_crc(buf_t *buf)
+ * @brief Remove "crc" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t OK on success, < 0 on error
+ */
+err_t buf_unmark_crc(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_set_canary(buf_t *buf)
+ * @brief Set CANARY maer in the end of the buffer. The buf_t must be marked as CANARY.
+ * @param buf_t * buf Buffer to set CANARy pattern
+ * @return err_t EOK on success, < 0 on error
+ * @details If the buf doesn't have CANARY flag it will return an error.
+ */
+err_t buf_set_canary(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_force_canary(buf_t *buf)
+ * @brief Set CAANRY mark in the end of the buffer and apply ANARY flag on the buffer
+ * @param buf_t * buf Buffer to set CANARY
+ * @return err_t EOK on success, < 0 on error
+ * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer 
+ *  		will be replaced with CANARY mark. You must reserve / clean the last byte for it.
+ */
+err_t buf_force_canary(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_test_canary(buf_t *buf)
+ * @brief Check that CANARY mark is untouched
+ * @param buf_t * buf Buffer to check
+ * @return err_t EOK if CANARY untouched, < o if the canary is damaged
+ */
+err_t buf_test_canary(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func buf_t_canary_t buf_get_canary(buf_t *buf)
+ * @brief Return current value of CANARY byte
+ * @param buf_t * buf Buffer to read CANARY
+ * @return buf_t_canary_t Value of CANARY byte
+ * @details You may want to use this function if CANARY is damaged
+ */
+buf_t_canary_t buf_get_canary(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func void buf_print_flags(buf_t *buf)
+ * @brief Print flags of the buffer. Useful for debug
+ * @param buf_t * buf Buf to read flags
+ */
+void buf_print_flags(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func int buf_is_string(buf_t *buf)
+ * @brief Test if the buffer is a string buffer
+ * @param buf_t * buf Buffer to check
+ * @return int EOK if it is a string buffer, > 0 if not, < 0 in error
+ */
+int buf_is_string(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_detect_used(buf_t *buf)
+ * @brief If you played with the buffer's data (for example, copied / replaced tezt in the
+ *  	  buf->data) this function will help to detect right buf->used value.
+ * @param buf_t * buf Buffer to analyze
+ * @return err_tEOK on succes + buf->used set to a new value, < 0 on error
+ */
+err_t buf_detect_used(/*@null@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags)
+ * @brief Receive from socket into buffer 
+ * @param buf_t * buf Buffer to save received data
+ * @param const int socket Opened socket
+ * @param const size_t expected How many bytes expected
+ * @param const int flags Flags to pass to recv() function
+ * @return ssize_t Number of received bytes, < 0 on error
+ */
+ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func buf_t* buf_from_string(char *str, size_t size_without_0)
+ * @brief Convert given string "str" into buf_t. The resulting buf_t is a nirmal STRING type buffer.
+ * @param char   * str String to convert
+ * @param size_t size_without_0 Length of the string without terminating '\0'
+ * @return buf_t* New buf_t containing the "str"
+ */
+/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0);
 
 /* Additional defines */
 #ifdef BUF_DEBUG
 
-#define BUF_TEST(buf) do {if (0 != buf_is_valid(buf)){fprintf(stderr, "######>>> Buffer invalid here: func: %s file: %s + %d [allocated here: %s +%d %s()]\n", __func__, __FILE__, __LINE__, buf->filename, buf->line, buf->func);}} while (0)
-#define BUF_DUMP(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u [allocated here: %s +%d %s()]\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used, buf->filename, buf->line, buf->func);} while(0)
-#define BUF_DUMP_ERR(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u [allocated here: %s +%d %s()]\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used, buf->filename, buf->line, buf->func);} while(0)
+	#define BUF_TEST(buf) do {if (0 != buf_is_valid(buf)){fprintf(stderr, "######>>> Buffer invalid here: func: %s file: %s + %d [allocated here: %s +%d %s()]\n", __func__, __FILE__, __LINE__, buf->filename, buf->line, buf->func);}} while (0)
+	#define BUF_DUMP(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u [allocated here: %s +%d %s()]\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used, buf->filename, buf->line, buf->func);} while(0)
+	#define BUF_DUMP_ERR(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u [allocated here: %s +%d %s()]\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used, buf->filename, buf->line, buf->func);} while(0)
 
 #else
 
-#define BUF_TEST(buf) do {if (0 != buf_is_valid(buf)){fprintf(stderr, "######>>> Buffer test invalid here: func: %s file: %s + %d\n", __func__, __FILE__, __LINE__);}} while (0)
-#define BUF_DUMP(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used);} while(0)
-#define BUF_DUMP_ERR(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used);} while(0)
+	#define BUF_TEST(buf) do {if (0 != buf_is_valid(buf)){fprintf(stderr, "######>>> Buffer test invalid here: func: %s file: %s + %d\n", __func__, __FILE__, __LINE__);}} while (0)
+	#define BUF_DUMP(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used);} while(0)
+	#define BUF_DUMP_ERR(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used);} while(0)
+
 #endif
 
 #ifndef BUF_NOISY
-#undef BUF_DUMP
-#define BUF_DUMP(buf) do{}while(0)
+	#undef BUF_DUMP
+	#define BUF_DUMP(buf) do{}while(0)
 #endif
 
 #endif /* _BUF_T_H_ */
