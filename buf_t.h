@@ -1,8 +1,11 @@
 #ifndef _BUF_T_H_
 #define _BUF_T_H_
 
+#include <stddef.h>
+#include <sys/types.h>
 #define BUF_DEBUG
 #define BUF_NOISY
+
 
 /*
  * buf_t is an implementation of abstract buffer.
@@ -121,24 +124,52 @@ typedef enum {
 #define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
 #define TFREE_SIZE(x,sz) do { if(NULL != x) {memset(x,0,sz);free(x); x = NULL;} else {DE(">>>>>>>> Tried to free_size() NULL: %s\n", #x);} }while(0)
 
+/* Whidth of the flags field */
 typedef uint8_t buf_t_flags_t;
 
+/* Size of 'room' and 'used':
+ * 1. If this type is "uint32", the max size of data buffer is:
+ * 4294967295 bytes, or 4294967 KB, or 4294 Bb
+ * 
+ * 2. If this size redefined to uint16, the max size of data buffer is:
+ * 65535 bytes, or 65 Kilobyte
+ * 
+ * Be careful if you do resefine this type.
+ * If you plan to used buf_t for file opening / reading / writing, you may have a problem if this
+ * type is too small.
+ * 
+ */
+
+typedef uint32_t buf_usize_t;
+
 /* Simple struct to hold a buffer / string and its size / lenght */
+
+#ifdef BUF_DEBUG
 struct buf_t_struct
 {
-	uint32_t room;              /* Allocated size */
-	uint32_t used;              /* Used size */
+	buf_usize_t room;           /* Allocated size */
+	buf_usize_t used;           /* Used size */
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
 	/*@temp@*/char *data;       /* Pointer to data */
-	#ifdef BUF_DEBUG
+
 	/* Where this buffer allocated: function */
 	const char *func;
 	/* Where this buffer allocated: file */
 	const char *filename;
 	/* Where this buffer allocated: line */
 	int line;
-	#endif
 };
+
+#else /* Not debug */
+/* Simple struct to hold a buffer / string and its size / lenght */
+struct buf_t_struct
+{
+	buf_usize_t room;           /* Allocated size */
+	buf_usize_t used;           /* Used size */
+	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
+	/*@temp@*/char *data;       /* Pointer to data */
+};
+#endif
 
 typedef struct buf_t_struct buf_t;
 
@@ -238,11 +269,12 @@ extern void buf_default_flags(buf_t_flags_t f);
  * @func err_t buf_set_data(buf_t *buf, char *data, size_t size, size_t len)
  * @brief Set new data into buffer. The buf_t *buf must be clean, i.e. buf->data == NULL and
  *  buf->room == 0; After the new buffer 'data' set, the buf->len also set to 'len'
- * @param buf_t  * buf 'buf_t' buffer to set new data 'data'
- * @param char   * data Data to set into the buf_t
+ * @param buf_t * buf 'buf_t' buffer to set new data 'data'
+ * @param char * data Data to set into the buf_t
  * @param size_t size Size of the new 'data'
  * @param size_t len Length of data in the buffer, user must provide it
- * @return err_t EOK on success, EBAD on failure
+ * @return err_t Returns EOK on success
+ * 	Return EACCESS if the buffer is read-only
  */
 extern err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len);
 
@@ -250,8 +282,10 @@ extern err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t siz
  * @author Sebastian Mountaniol (15/06/2020)
  * @func err_t buf_is_valid(buf_t *buf)
  * @brief Test bufer validity
- * @param buf_t * buf
- * @return err_t
+ * @param buf_t * buf Buffer to test
+ * @return err_t Returns EOK if the buffer is valid.
+ * 	Returns EINVAL if the 'buf' == NULL.
+ * 	Returns EBAD if this buffer is invalid.
  */
 extern err_t buf_is_valid(buf_t *buf);
 
@@ -278,10 +312,12 @@ extern /*@null@*/ buf_t *buf_string(size_t size);
  * @author Sebastian Mountaniol (16/06/2020)
  * @func err_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
  * @brief Set a data into buffer and lock the buffer, i.e. turn the buf into "read-only".
- * @param buf_t  * buf
- * @param char   * data
- * @param size_t size
- * @return err_t
+ * @param buf_t * buf Buffer to set read-only
+ * @param char * data Data the buf_t will contain. It is legal if this parameter == NULL
+ * @param size_t size Size of the buffer. If data == NULL this argument must be 0
+ * @return err_t EOK on success
+ * 	Returns ECANCELED if data == NULL but size > 0
+ * 	Returns EACCESS if this buffer already marked as read-only.
  */
 extern err_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
 
@@ -292,7 +328,7 @@ extern err_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
  *    caller. After this function buf->data set to NULL, buf->len = 0, buf->size = 0
  * @param buf_t * buf Buffer to extract data buffer
  * @return void* Data buffer pointer on success, NULL on error. Warning: if the but_t did not have a
- * 			 buffer (i.e. buf->data was NULL) the NULL will be returned.
+ * 	buffer (i.e. buf->data was NULL) the NULL will be returned.
  */
 extern /*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf);
 
@@ -308,11 +344,15 @@ extern /*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf);
 extern /*@null@*/void *buf_2_data(/*@null@*/buf_t *buf);
 
 /**
- * @brief Remove data from buffer, set buf->room = buf->len = 0
+ * @brief Remove data from buffer (and free the data), set buf->room = buf->len = 0
  * @func err_t buf_clean(buf_t *buf)
  * @author se (16/05/2020)
- * @param buf Buffer to remove data in
- * @return err_t EOK if all right, EBAD on error
+ * @param buf Buffer to remove data from
+ * @return err_t EOK if all right
+ * 	EINVAL if buf is NULL pointer
+ * 	EACCESS if the buffer is read-only, buffer kept untouched
+ * @details If the buffer is invalid (see buf_is_valid()),
+ * @details the opreration won't be interrupted and buffer will be cleaned.
  */
 extern err_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
 
@@ -323,9 +363,13 @@ extern err_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
  *    memory will be cleaned. The 'size' argument must be >
  *    0. For removing buf->data use 'buf_free_force()'
  * @author se (06/04/2020)
- * @param buf_t  * buf Buffer to grow
+ * @param buf_t * buf Buffer to grow
  * @param size_t size How many byte to add
- * @return int
+ * @return int EOK on success
+ * 	EINVAL if buf == NULL
+ * 	EACCESS if buf is read-only
+ * 	ENOMEM if allocation of additional space failed. In this case the buffer kept untouched.
+ * 	ENOKEY if the buffer marked as CAANRY but CANARY work can't be added.
  */
 extern err_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
 
@@ -336,9 +380,11 @@ extern err_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
  *    yes, calls buf_room() to increase room. The 'expect'
  *    ca be == 0
  * @author se (06/04/2020)
- * @param buf_t  * buf Buffer to test
+ * @param buf_t * buf Buffer to test
  * @param size_t expect How many bytes will be added
- * @return int EOK on success, EBAD on failure
+ * @return int EOK if the buffer has sufficient room or if room added succesfully
+ * 	EINVAL if buf is NULL or 'expected' == 0
+ * 	Also can return all error statuses of buf_add_room()
  */
 extern err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
 
@@ -347,49 +393,63 @@ extern err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
  * @brief Free buf; if buf->data is not empty, free buf->data
  * @author se (03/04/2020)
  * @param buf_t * buf Buffer to remove
- * @return int EOK on success, EBAD on failure
+ * @return int EOK on success
+ * 	EINVAL is the buf is NULL pointer
+ * 	EACCESS if the buf is read-only
+ * 	ECANCELED if the buffer is invalid
  */
 extern err_t buf_free(/*@only@*//*@null@*/buf_t *buf);
 
 /**
- * @func int buf_add(buf_t *b, const char *buf, const size_t size)
- * @brief Add buffer "buf" of size "size" to the tail of buf_t.
- *    The buf_t memory added if it needed.
+ * @func err_t buf_add(buf_t *buf, const char *new_data, const size_t size)
+ * @brief Append (copy) buffer "new_data" of size "size" to the tail of buf_t->data
+ *    New memory allocated if needed.
  * @author se (06/04/2020)
- * @param buf_t * b
- * @param const char* buf
- * @param const size_t size
- * @return int
+ * @param buf_t * buf Buffer to append to buf->data
+ * @param const char* new_data This buffer will be appended (copied) to the tail of buf->data
+ * @param const size_t size Size of 'new_data' in bytes
+ * @return int EOK on success
+ * 	EINVAL if: 'buf' == NULL, or 'new_data' == NULL, or 'size' == 0
+ * 	EACCESS if the 'buf' is read-only
+ * 	ENOMEM if new memory can't be allocated
  */
 extern err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
  * @func ssize_t buf_used(buf_t *buf)
- * @brief Return value of buf->used
- * @param buf_t * buf
- * @return uint32_t buf->used; (uint32_t) -1 on error
+ * @brief Return size in bytes of used memory (which is buf->used)
+ * @param buf_t * buf Buffer to check
+ * @return ssize_t Number of bytes used on success
+ * 	EINVAL if the 'buf' == NULL
  */
 extern ssize_t buf_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
  * @func ssize_t buf_room(buf_t *buf)
- * @brief Value of buf->room
- * @param buf_t * buf
- * @return uint32_t
- * @details of buf->room, (uint32_t) -1 on error
+ * @brief Return size of memory currently allocated for this 'buf' (which is buf->room)
+ * @param buf_t * buf Buffer to test
+ * @return ssize_t How many bytes allocated for this 'buf'
+ * 	EINVAL if the 'buf' == NULL
  */
 extern ssize_t buf_room(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
  * @func err_t buf_pack(buf_t *buf)
- * @brief Shrink buf->data to buf->len. We may use this function when we finished with the buf_t and
- *    its size won't change. We release unused memory with this function.
+ * @brief Shrink buf->data to buf->len.
+ * @brief This function may be used when you finished with the buf_t and
+ *    its size won't change anymore.
+ *    The unused memory will be released.
  * @param buf_t * buf Buffer to pack
- * @return err_t EOK on success, EBAD on a failure. If EBAD returned the buf->data is untouched, we
- * 			 may use it.
+ * @return err_t EOK on success;
+ * 	EOK if this buffer is empty (buf->data == NULL) EOK returned
+ * 	EOK if this buffer should not be packed (buf->used == buf->room)
+ * 	EINVAL id 'buf' == NULL
+ * 	ECANCELED if this buffer is invalid (see buf_is_valid)
+ * 	ENOMEM if internal realloc can't reallocate / shring memory
+ * 	Also can return one of buf_set_canary() errors
  */
 extern err_t buf_pack(/*@null@*/buf_t *buf);
 
@@ -415,15 +475,14 @@ extern buf_t_flags_t buf_save_flags(void);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
- * @func int buf_restore_flags(buf_t_flags_t flags)
+ * @func void buf_restore_flags(buf_t_flags_t flags)
  * @brief Restore global buf_t flags
  * @param buf_t_flags_t flags - flags to set
- * @return int EOK on success
- * @details See buf_save_flags()
+ *  @details See buf_save_flags()
  */
-extern int buf_restore_flags(buf_t_flags_t flags);
+extern void buf_restore_flags(buf_t_flags_t flags);
 
-/**** Mark / Unmark flags ***/
+/**** Mark / Unmark flags */
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -431,9 +490,15 @@ extern int buf_restore_flags(buf_t_flags_t flags);
  * @brief Mark (set flag) the buf as a
  * buffer containing string
  * @param buf_t * buf Buf to mark
- *
  * @return err_t OK on success, EINVAL if
- * buf in NULL
+ * 	buf in NULL
+ */
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @func err_t buf_mark_string(buf_t *buf)
+ * @brief Mark (set flag) the buf as a buffer containing string buffer
+ * data @param buf_t * buf Buffer to mark
+ * @return err_t EOK on success, EINVAL if buf is NULL
  */
 extern err_t buf_mark_string(buf_t *buf);
 
@@ -541,9 +606,10 @@ extern err_t buf_unmark_crc(buf_t *buf);
  * @func err_t buf_set_canary(buf_t *buf)
  * @brief Set CANARY maer in the end of the buffer. The buf_t must be marked as CANARY.
  * @param buf_t * buf Buffer to set CANARy pattern
- * @return err_t EOK on success, EINVAL if buf is NULL, ECANCELED if buf does not have CANARY or if 
- *  	   CANARY pattern is bad right after it set
- * @details If the buf doesn't have CANARY flag it will return an error.
+ * @return err_t EOK on success,
+ * 	EINVAL if buf is NULL,
+ * 	ECANCELED if buf does not have CANARY or if CANARY pattern is bad right after it set
+ * @details If the buf doesn't have CANARY flag it will return ECANCELED.
  */
 extern err_t buf_set_canary(buf_t *buf);
 
@@ -552,9 +618,12 @@ extern err_t buf_set_canary(buf_t *buf);
  * @func err_t buf_force_canary(buf_t *buf)
  * @brief Set CAANRY mark in the end of the buffer and apply ANARY flag on the buffer
  * @param buf_t * buf Buffer to set CANARY
- * @return err_t EOK on success, EINVAL if buf is NULL, or one of but_set_canary errors
- * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer 
- *  		will be replaced with CANARY mark. You must reserve / clean the last byte for it.
+ * @return err_t EOK on success,
+ * 	EINVAL if buf is NULL,
+ * 	ECANCELED if the buffer is too small to set CANARY mark,
+ * 	or one of the but_set_canary() function errors
+ * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer
+ *    will be replaced with CANARY mark. You must reserve the last byte for it.
  */
 extern err_t buf_force_canary(buf_t *buf);
 
@@ -563,8 +632,10 @@ extern err_t buf_force_canary(buf_t *buf);
  * @func err_t buf_test_canary(buf_t *buf)
  * @brief Check that CANARY mark is untouched
  * @param buf_t * buf Buffer to check
- * @return err_t EOK if CANARY untouched, EINVAL if buf is NULL, ECANCELED if buf not marked as 
- *  	   CANARY buffer or if canary mark is invalid 
+ * @return err_t EOK if CANARY word is untouched,
+ * 	EINVAL if the buf is NULL,
+ * 	ECANCELED if buf is not marked as a CANARY buffer,
+ * 	EBAD if canary mark is invalid
  */
 extern err_t buf_test_canary(buf_t *buf);
 
@@ -591,7 +662,9 @@ extern void buf_print_flags(buf_t *buf);
  * @func int buf_is_string(buf_t *buf)
  * @brief Test if the buffer is a string buffer
  * @param buf_t * buf Buffer to check
- * @return int EOK if it is a string buffer, 1 if not, EINVAL if buf is NULL
+ * @return int EOK if the buf a string buffer
+ * 	Returns EINVAL if buf is NULL
+ * 	Returns 1 if not
  */
 extern int buf_is_string(buf_t *buf);
 
@@ -599,23 +672,24 @@ extern int buf_is_string(buf_t *buf);
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_detect_used(buf_t *buf)
  * @brief If you played with the buffer's data (for example, copied / replaced tezt in the
- *  	  buf->data) this function will help to detect right buf->used value.
+ *    buf->data) this function will help to detect right buf->used value.
  * @param buf_t * buf Buffer to analyze
- * @return err_t EOK on succes + buf->used set to a new value, EINVAL is buf is NULL, ECANCELED if 
- *  	   buffer is invalid or if buffer is empty, 
+ * @return err_t EOK on succes + buf->used set to a new value
+ * 	EINVAL is 'buf' is NULL
+ * 	ECANCELED if the buf is invalid or if the buf is empty
  */
 extern err_t buf_detect_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags)
- * @brief Receive from socket into buffer 
+ * @brief Receive from socket into buffer
  * @param buf_t * buf Buffer to save received data
  * @param const int socket Opened socket
  * @param const size_t expected How many bytes expected
  * @param const int flags Flags to pass to recv() function
- * @return ssize_t Number of received bytes, EINVAL if buf is NULL, else returns status of recv() 
- *  	   function
+ * @return ssize_t Number of received bytes
+ * 	EINVAL if buf is NULL, else returns status of recv() function
  */
 extern ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags);
 
@@ -623,11 +697,11 @@ extern ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, con
  * @author Sebastian Mountaniol (18/06/2020)
  * @func buf_t* buf_from_string(char *str, size_t size_without_0)
  * @brief Convert given string "str" into buf_t. The resulting buf_t is a nirmal STRING type buffer.
- * @param char   * str String to convert
+ * @param char * str String to convert
  * @param size_t size_without_0 Length of the string without terminating '\0'
  * @return buf_t* New buf_t containing the "str"
  */
-extern  /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0);
+extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0);
 
 /* Additional defines */
 #ifdef BUF_DEBUG

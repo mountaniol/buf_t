@@ -4,8 +4,10 @@
 #include <stdarg.h>
 #include <netdb.h>
 #include <errno.h>
+#include <stddef.h>
 
 #include "buf_t.h"
+#include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
 
@@ -22,7 +24,7 @@ buf_t_flags_t buf_save_flags()
 	return (g_flags);
 }
 
-int buf_restore_flags(buf_t_flags_t flags)
+void buf_restore_flags(buf_t_flags_t flags)
 {
 	g_flags = flags;
 }
@@ -170,7 +172,7 @@ err_t buf_force_canary(buf_t *buf)
 	TESTP(buf, EINVAL);
 
 	if (buf->used < BUF_T_CANARY_SIZE) {
-		DE("Buffer is to small for CANARY\n");
+		DE("Buffer is to small for CANARY word\n");
 		TRY_ABORT();
 		return (ECANCELED);
 
@@ -202,7 +204,7 @@ err_t buf_test_canary(buf_t *buf)
 	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf->room));
 
 	TRY_ABORT();
-	return (ECANCELED);
+	return (EBAD);
 }
 
 /* Extract canary word from the buf */
@@ -316,6 +318,8 @@ int buf_is_string(buf_t *buf)
 		TRY_ABORT();
 		return (NULL);
 	}
+
+	buf_allocs_num_inc();
 
 	buf->flags = g_flags;
 
@@ -437,6 +441,11 @@ err_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 	int rc;
 	TESTP(buf, EINVAL);
 
+	if (NULL == data && size > 0) {
+		DE("Wrong arguments: data == NULL but size > 0 (%zu)\n", size);
+		return (ECANCELED);
+	}
+
 	rc = buf_set_data(buf, data, size, size);
 	if (EOK != rc) {
 		DE("Can't set data\n");
@@ -538,6 +547,12 @@ err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
 		return (EINVAL);
 	}
 
+	if (expect == 0) {
+		DE("'expected' size == 0\n");
+		TRY_ABORT();
+		return (EINVAL);
+	}
+
 	if (buf->used + expect <= buf->room) {
 		return (EOK);
 	}
@@ -593,6 +608,8 @@ err_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	}
 
 	TFREE_SIZE(buf, sizeof(buf_t));
+	/* The buffer is released. Write down statistics. */
+	buf_release_num_inc();
 	return (EOK);
 }
 
@@ -696,7 +713,7 @@ err_t buf_pack(/*@null@*/buf_t *buf)
 	/* Case 1: realloc can't reallocate */
 	if (NULL == tmp) {
 		DE("Realloc failed\n");
-		return (EBAD);
+		return (ENOMEM);
 	}
 
 	/* Case 2: realloc succeeded, new memory returned */

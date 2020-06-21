@@ -12,7 +12,7 @@ DEBUG=-DDEBUG3
 
 # client daemon
 
-BUF_O=buf_t.o buf_t_memory.o
+BUF_O=buf_t.o buf_t_memory.o buf_t_stats.o
 BUF_A=buf_t.a
 BUF_TEST=btest.out
 

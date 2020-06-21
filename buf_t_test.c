@@ -5,6 +5,7 @@
 #include <stdarg.h>
 
 #include "buf_t.h"
+#include "buf_t_stats.h"
 #include "buf_t_debug.h"
 
 #define PSPLITTER()  do{printf("++++++++++++++++++++++++++++\n");} while(0)
@@ -491,6 +492,8 @@ int main()
 	test_buf_pack();
 
 	test_buf_canary();
+
+	buf_t_stats_print();
 
 	return (0);
 }
