@@ -51,7 +51,7 @@ void buf_default_flags(buf_t_flags_t f)
 }
 
 /* Set flag(s) of the buf */
-static err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
+static error_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EINVAL);
 	buf->flags |= f;
@@ -59,7 +59,7 @@ static err_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 }
 
 /* Clear flag(s) of the buf */
-static err_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
+static error_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EINVAL);
 	buf->flags &= ~f;
@@ -68,64 +68,64 @@ static err_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 
 /***** Set of function to add flag to buffer */
 
-err_t buf_mark_string(buf_t *buf)
+error_t buf_mark_string(buf_t *buf)
 {
 	return (buf_set_flag(buf, BUF_T_STRING));
 }
 
-err_t buf_mark_ro(buf_t *buf)
+error_t buf_mark_ro(buf_t *buf)
 {
 	return (buf_set_flag(buf, BUF_T_READONLY));
 }
 
-err_t buf_mark_compresed(buf_t *buf)
+error_t buf_mark_compresed(buf_t *buf)
 {
 	return (buf_set_flag(buf, BUF_T_COMPRESSED));
 }
 
-err_t buf_mark_encrypted(buf_t *buf)
+error_t buf_mark_encrypted(buf_t *buf)
 {
 	return (buf_set_flag(buf, BUF_T_ENCRYPTED));
 }
 
-err_t buf_mark_canary(buf_t *buf)
+error_t buf_mark_canary(buf_t *buf)
 {
 	return (buf_set_flag(buf, BUF_T_CANARY));
 }
 
-err_t buf_mark_crc(buf_t *buf)
+error_t buf_mark_crc(buf_t *buf)
 {
 	return (buf_set_flag(buf, BUF_T_CRC));
 }
 
 /***** Set of function to remove flag from buffer */
 
-err_t buf_unmark_string(buf_t *buf)
+error_t buf_unmark_string(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_STRING));
 }
 
-err_t buf_unmark_ro(buf_t *buf)
+error_t buf_unmark_ro(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_READONLY));
 }
 
-err_t buf_unmark_compresed(buf_t *buf)
+error_t buf_unmark_compresed(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_COMPRESSED));
 }
 
-err_t buf_unmark_encrypted(buf_t *buf)
+error_t buf_unmark_encrypted(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_ENCRYPTED));
 }
 
-err_t buf_unmark_canary(buf_t *buf)
+error_t buf_unmark_canary(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_CANARY));
 }
 
-err_t buf_unmark_crc(buf_t *buf)
+error_t buf_unmark_crc(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_CRC));
 }
@@ -137,7 +137,7 @@ err_t buf_unmark_crc(buf_t *buf)
  * that extra space for canary pattern is reserved
  * in the end of the buf->data
  */
-err_t buf_set_canary(buf_t *buf)
+error_t buf_set_canary(buf_t *buf)
 {
 	buf_t_canary_t canary;
 	buf_t_canary_t *canary_p;
@@ -167,7 +167,7 @@ err_t buf_set_canary(buf_t *buf)
  * If this buffer contains string, i.e.flag BUF_T_STRING is set,
  * a '\0' will be added before canary 
  */
-err_t buf_force_canary(buf_t *buf)
+error_t buf_force_canary(buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 
@@ -187,7 +187,7 @@ err_t buf_force_canary(buf_t *buf)
 }
 
 /* If CANARY (a pattern after the buf->data) enabled we test its integrity */
-err_t buf_test_canary(buf_t *buf)
+error_t buf_test_canary(buf_t *buf)
 {
 	buf_t_canary_t canary = BUF_T_CANARY_CHAR_PATTERN;
 	TESTP(buf, EINVAL);
@@ -233,7 +233,7 @@ void buf_print_flags(buf_t *buf)
 }
 
 /* Validate sanity of buf_t */
-err_t buf_is_valid(buf_t *buf)
+error_t buf_is_valid(buf_t *buf)
 {
 	if (NULL == buf) {
 		DE("Invalid: got NULL pointer\n");
@@ -411,7 +411,7 @@ int buf_is_string(buf_t *buf)
 	return (buf);
 }
 
-err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len)
+error_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len)
 {
 	TESTP(buf, EINVAL);
 	TESTP(data, EINVAL);
@@ -436,7 +436,7 @@ err_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
-err_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
+error_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 {
 	int rc;
 	TESTP(buf, EINVAL);
@@ -482,7 +482,7 @@ err_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 	return (data);
 }
 
-err_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
+error_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 {
 	void   *tmp   = NULL;
 	size_t canary = 0;
@@ -539,7 +539,7 @@ err_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 	return (EOK);
 }
 
-err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
+error_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
 {
 	if (NULL == buf) {
 		DE("Got NULL\n");
@@ -560,7 +560,7 @@ err_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
 	return (buf_add_room(buf, expect));
 }
 
-err_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
+error_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 
@@ -586,7 +586,7 @@ err_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 	return (EOK);
 }
 
-err_t buf_free(/*@only@*//*@null@*/buf_t *buf)
+error_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 
@@ -613,7 +613,7 @@ err_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	return (EOK);
 }
 
-err_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size)
+error_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size)
 {
 	size_t new_size;
 	if (NULL == buf || NULL == new_data || size < 1) {
@@ -664,7 +664,7 @@ ssize_t buf_room(/*@null@*/buf_t *buf)
 	return (buf->room);
 }
 
-err_t buf_pack(/*@null@*/buf_t *buf)
+error_t buf_pack(/*@null@*/buf_t *buf)
 {
 	void   *tmp     = NULL;
 	size_t new_size = -1;
@@ -740,7 +740,7 @@ err_t buf_pack(/*@null@*/buf_t *buf)
 /* Experimantal: Try to set the buf used size automatically */
 /* It can be useful if we copied manualy a string into buf_t and we want to update 'used' of the
    buf_t*/
-err_t buf_detect_used(/*@null@*/buf_t *buf)
+error_t buf_detect_used(/*@null@*/buf_t *buf)
 {
 	int used;
 	TESTP(buf, EINVAL);

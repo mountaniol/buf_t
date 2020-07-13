@@ -18,6 +18,37 @@ struct buf_t_stat_data
 	float average_time; /* Average time of the function run */
 };
 
+/* Here's definition of traced functions */
+enum e_func {
+	buf_set_canary_e = 0,
+	buf_force_canary_e,
+	buf_test_canary_e,
+	buf_get_canary_e,
+	buf_is_valid_e,
+	buf_new_e,
+	buf_string_e,
+	buf_from_string_e,
+	buf_set_data_e,
+	buf_set_data_ro_e,
+	buf_steal_data_e,
+	buf_2_data_e,
+	buf_add_room_e,
+	buf_test_room_e,
+	buf_clean_e,
+	buf_free_e,
+	buf_add_e,
+	buf_used_e,
+	buf_room_e,
+	buf_pack_e,
+	buf_detect_used_e,
+	buf_sprintf_e,
+	buf_recv_e,
+
+	buf_last_e
+};
+
+#define FUNC_STAT_ENTRY __func__##"e"
+
 
 void average_buf_size_inc(size_t buf_size);
 void buf_allocs_num_inc(void);
