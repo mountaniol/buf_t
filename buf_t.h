@@ -117,7 +117,7 @@ typedef enum {
 	BAD = -1,  /* Error status */
 	OK = 0,       /* Success status */
 	AGN = 1, /* "Try again" status */
-} error_t;
+} ret_t;
 
 #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
 #define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
@@ -275,7 +275,7 @@ extern void buf_default_flags(buf_t_flags_t f);
  * @return err_t Returns EOK on success
  * 	Return EACCESS if the buffer is read-only
  */
-extern error_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len);
+extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
@@ -286,7 +286,7 @@ extern error_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t s
  * 	Returns EINVAL if the 'buf' == NULL.
  * 	Returns EBAD if this buffer is invalid.
  */
-extern error_t buf_is_valid(buf_t *buf);
+extern ret_t buf_is_valid(buf_t *buf);
 
 /**
  * @func buf_t* buf_new(size_t size)
@@ -318,7 +318,7 @@ extern /*@null@*/ buf_t *buf_string(size_t size);
  * 	Returns ECANCELED if data == NULL but size > 0
  * 	Returns EACCESS if this buffer already marked as read-only.
  */
-extern error_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
+extern ret_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -353,7 +353,7 @@ extern /*@null@*/void *buf_2_data(/*@null@*/buf_t *buf);
  * @details If the buffer is invalid (see buf_is_valid()),
  * @details the opreration won't be interrupted and buffer will be cleaned.
  */
-extern error_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
+extern ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
 
 /**
  * @func int buf_room(buf_t *buf, size_t size)
@@ -370,7 +370,7 @@ extern error_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
  * 	ENOMEM if allocation of additional space failed. In this case the buffer kept untouched.
  * 	ENOKEY if the buffer marked as CAANRY but CANARY work can't be added.
  */
-extern error_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
+extern ret_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
 
 /**
  * @func int buf_test_room(buf_t *buf, size_t expect)
@@ -385,7 +385,7 @@ extern error_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
  * 	EINVAL if buf is NULL or 'expected' == 0
  * 	Also can return all error statuses of buf_add_room()
  */
-extern error_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
+extern ret_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
 
 /**
  * @func int buf_t_free_force(buf_t *buf)
@@ -397,7 +397,7 @@ extern error_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
  * 	EACCESS if the buf is read-only
  * 	ECANCELED if the buffer is invalid
  */
-extern error_t buf_free(/*@only@*//*@null@*/buf_t *buf);
+extern ret_t buf_free(/*@only@*//*@null@*/buf_t *buf);
 
 /**
  * @func err_t buf_add(buf_t *buf, const char *new_data, const size_t size)
@@ -412,7 +412,7 @@ extern error_t buf_free(/*@only@*//*@null@*/buf_t *buf);
  * 	EACCESS if the 'buf' is read-only
  * 	ENOMEM if new memory can't be allocated
  */
-extern error_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size);
+extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -450,7 +450,7 @@ extern ssize_t buf_room(/*@null@*/buf_t *buf);
  * 	ENOMEM if internal realloc can't reallocate / shring memory
  * 	Also can return one of buf_set_canary() errors
  */
-extern error_t buf_pack(/*@null@*/buf_t *buf);
+extern ret_t buf_pack(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (02/06/2020)
@@ -499,7 +499,7 @@ extern void buf_restore_flags(buf_t_flags_t flags);
  * data @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern error_t buf_mark_string(buf_t *buf);
+extern ret_t buf_mark_string(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -508,7 +508,7 @@ extern error_t buf_mark_string(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern error_t buf_mark_ro(buf_t *buf);
+extern ret_t buf_mark_ro(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -517,7 +517,7 @@ extern error_t buf_mark_ro(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern error_t buf_mark_compresed(buf_t *buf);
+extern ret_t buf_mark_compresed(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -526,7 +526,7 @@ extern error_t buf_mark_compresed(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern error_t buf_mark_encrypted(buf_t *buf);
+extern ret_t buf_mark_encrypted(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -535,7 +535,7 @@ extern error_t buf_mark_encrypted(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern error_t buf_mark_canary(buf_t *buf);
+extern ret_t buf_mark_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -544,7 +544,7 @@ extern error_t buf_mark_canary(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern error_t buf_mark_crc(buf_t *buf);
+extern ret_t buf_mark_crc(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -553,7 +553,7 @@ extern error_t buf_mark_crc(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern error_t buf_unmark_string(buf_t *buf);
+extern ret_t buf_unmark_string(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -562,7 +562,7 @@ extern error_t buf_unmark_string(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern error_t buf_unmark_ro(buf_t *buf);
+extern ret_t buf_unmark_ro(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -571,7 +571,7 @@ extern error_t buf_unmark_ro(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern error_t buf_unmark_compresed(buf_t *buf);
+extern ret_t buf_unmark_compresed(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -580,7 +580,7 @@ extern error_t buf_unmark_compresed(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern error_t buf_unmark_encrypted(buf_t *buf);
+extern ret_t buf_unmark_encrypted(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -589,7 +589,7 @@ extern error_t buf_unmark_encrypted(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern error_t buf_unmark_canary(buf_t *buf);
+extern ret_t buf_unmark_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -598,7 +598,7 @@ extern error_t buf_unmark_canary(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern error_t buf_unmark_crc(buf_t *buf);
+extern ret_t buf_unmark_crc(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -610,7 +610,7 @@ extern error_t buf_unmark_crc(buf_t *buf);
  * 	ECANCELED if buf does not have CANARY or if CANARY pattern is bad right after it set
  * @details If the buf doesn't have CANARY flag it will return ECANCELED.
  */
-extern error_t buf_set_canary(buf_t *buf);
+extern ret_t buf_set_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -624,7 +624,7 @@ extern error_t buf_set_canary(buf_t *buf);
  * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer
  *    will be replaced with CANARY mark. You must reserve the last byte for it.
  */
-extern error_t buf_force_canary(buf_t *buf);
+extern ret_t buf_force_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -636,7 +636,7 @@ extern error_t buf_force_canary(buf_t *buf);
  * 	ECANCELED if buf is not marked as a CANARY buffer,
  * 	EBAD if canary mark is invalid
  */
-extern error_t buf_test_canary(buf_t *buf);
+extern ret_t buf_test_canary(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -677,7 +677,7 @@ extern int buf_is_string(buf_t *buf);
  * 	EINVAL is 'buf' is NULL
  * 	ECANCELED if the buf is invalid or if the buf is empty
  */
-extern error_t buf_detect_used(/*@null@*/buf_t *buf);
+extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
