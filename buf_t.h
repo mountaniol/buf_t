@@ -114,10 +114,9 @@
 //#include "mp-common.h"
 
 typedef enum {
-	EBAD = -1,  /* Error status */
-	EOK = 0,       /* Success status */
-
-	EAGN = 1, /* "Try again" status */
+	BAD = -1,  /* Error status */
+	OK = 0,       /* Success status */
+	AGN = 1, /* "Try again" status */
 } error_t;
 
 #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)

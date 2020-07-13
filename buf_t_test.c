@@ -99,7 +99,7 @@ void test_buf_string(size_t buffer_init_size)
 
 	PSTEP("Allocated buffer");
 
-	if (EOK != buf_add(buf, str, strlen(str))) {
+	if (OK != buf_add(buf, str, strlen(str))) {
 		PFAIL("buf_string: can't add");
 		abort();
 	}
@@ -131,7 +131,7 @@ void test_buf_string(size_t buffer_init_size)
 
 	PSTEP("Tested str added");
 
-	if (EOK != buf_add(buf, str2, strlen(str2))) {
+	if (OK != buf_add(buf, str2, strlen(str2))) {
 		printf("[Can't add string into buf]\n");
 		PFAIL("buf_string");
 		abort();
@@ -189,7 +189,7 @@ void test_buf_pack_string(void)
 
 	len = strlen(str);
 
-	if (EOK != buf_add(buf, str, len)) {
+	if (OK != buf_add(buf, str, len)) {
 		PFAIL("buf_pack_string: can't add");
 		abort();
 	}
@@ -205,7 +205,7 @@ void test_buf_pack_string(void)
 
 
 	len2 = strlen(str2);
-	if (EOK != buf_add(buf, str2, len2)) {
+	if (OK != buf_add(buf, str2, len2)) {
 		printf("[Can't add string into buf]\n");
 		PFAIL("buf_pack_string");
 		abort();
@@ -222,7 +222,7 @@ void test_buf_pack_string(void)
 	}
 
 	/* Now we pack the buf */
-	if (EOK != buf_pack(buf)) {
+	if (OK != buf_pack(buf)) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -299,7 +299,7 @@ void test_buf_pack(void)
 	/* Make sure that this buffer ended not with 0 */
 	//buf_data[buf_data_size - 1] = 9;
 
-	if (EOK != buf_add(buf, buf_data, buf_data_size)) {
+	if (OK != buf_add(buf, buf_data, buf_data_size)) {
 		PFAIL("buf_pack: can't add");
 		abort();
 	}
@@ -320,7 +320,7 @@ void test_buf_pack(void)
 	PSTEP("Compared memory");
 
 	/* Now we pack the buf */
-	if (EOK != buf_pack(buf)) {
+	if (OK != buf_pack(buf)) {
 		PFAIL("buf_pack");
 		abort();
 	}
@@ -373,7 +373,7 @@ void test_buf_canary(void)
 		abort();
 	}
 
-	if (EOK != buf_mark_canary(buf)) {
+	if (OK != buf_mark_canary(buf)) {
 		PFAIL("buf_canary: Can't set CANARY flag");
 		abort();
 	}
@@ -395,7 +395,7 @@ void test_buf_canary(void)
 
 	PSTEP("Filled local buffer with random data");
 
-	if (EOK != buf_add(buf, buf_data, buf_data_size - 1)) {
+	if (OK != buf_add(buf, buf_data, buf_data_size - 1)) {
 		PFAIL("buf_pack: can't add");
 		abort();
 	}
@@ -416,7 +416,7 @@ void test_buf_canary(void)
 	PSTEP("Compared memory");
 
 	/* Test canary */
-	if (EOK != buf_test_canary(buf)) {
+	if (OK != buf_test_canary(buf)) {
 		PFAIL("buf_canary: bad canary");
 		abort();
 	}
@@ -429,14 +429,14 @@ void test_buf_canary(void)
 	PSTEP("Corrupted buf->data");
 
 	/* Test canary: we expect it to be wrong */
-	if (EOK == buf_test_canary(buf)) {
+	if (OK == buf_test_canary(buf)) {
 		PFAIL("buf_canary: good canary but must be bad");
 		abort();
 	}
 
 	PSTEP("The canary is broken. It is what expected");
 
-	if (EOK != buf_set_canary(buf)) {
+	if (OK != buf_set_canary(buf)) {
 		PFAIL("buf_canary: can't set canary on the buffer");
 		abort();
 	}
@@ -444,7 +444,7 @@ void test_buf_canary(void)
 	PSTEP("Fixed canary");
 
 	/* Test canary again */
-	if (EOK != buf_test_canary(buf)) {
+	if (OK != buf_test_canary(buf)) {
 		PFAIL("buf_canary: bad canary but must be good");
 		abort();
 	}
@@ -452,14 +452,14 @@ void test_buf_canary(void)
 	PSTEP("Now canary is OK");
 
 	/* Run buf validation */
-	if (EOK != buf_is_valid(buf)) {
+	if (OK != buf_is_valid(buf)) {
 		PFAIL("buf_canary: buffer is not valid");
 		abort();
 	}
 
 	PSTEP("Buffer is valid");
 
-	if (EOK != buf_free(buf)) {
+	if (OK != buf_free(buf)) {
 		PFAIL("buf_canary: buf_free returned not OK");
 		abort();
 	}

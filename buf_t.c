@@ -55,7 +55,7 @@ static error_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EINVAL);
 	buf->flags |= f;
-	return (EOK);
+	return (OK);
 }
 
 /* Clear flag(s) of the buf */
@@ -63,7 +63,7 @@ static error_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EINVAL);
 	buf->flags &= ~f;
-	return (EOK);
+	return (OK);
 }
 
 /***** Set of function to add flag to buffer */
@@ -158,7 +158,7 @@ error_t buf_set_canary(buf_t *buf)
 		TRY_ABORT();
 		return (ECANCELED);
 	}
-	return (EOK);
+	return (OK);
 }
 
 /* This function will add canary after existing buffer
@@ -198,13 +198,13 @@ error_t buf_test_canary(buf_t *buf)
 	}
 
 	if (0 == memcmp(buf->data + buf->room, &canary, BUF_T_CANARY_SIZE)) {
-		return (EOK);
+		return (OK);
 	}
 
 	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf->room));
 
 	TRY_ABORT();
-	return (EBAD);
+	return (BAD);
 }
 
 /* Extract canary word from the buf */
@@ -214,7 +214,7 @@ buf_t_canary_t buf_get_canary(buf_t *buf)
 	TESTP(buf, (buf_t_canary_t)-1);
 	if (!IS_BUF_CANARY(buf)) {
 		DE("The buffer doesn't have canary flag\n");
-		return (EOK);
+		return (OK);
 	}
 
 	//memcpy(&canary, buf->data + buf->room, BUF_T_CANARY_SIZE);
@@ -278,7 +278,7 @@ error_t buf_is_valid(buf_t *buf)
 		return (ECANCELED);
 	}
 
-	if (buf->room > 0 && IS_BUF_CANARY(buf) && (EOK != buf_test_canary(buf))) {
+	if (buf->room > 0 && IS_BUF_CANARY(buf) && (OK != buf_test_canary(buf))) {
 		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf->room;
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
@@ -295,14 +295,14 @@ error_t buf_is_valid(buf_t *buf)
 
 	DDD0("Buffer is valid\n");
 	//buf_print_flags(buf);
-	return (EOK);
+	return (OK);
 }
 
 int buf_is_string(buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 	if (IS_BUF_STRING(buf)) {
-		return (EOK);
+		return (OK);
 	}
 	return (1);
 }
@@ -339,14 +339,14 @@ int buf_is_string(buf_t *buf)
 	buf->used = 0;
 
 	/* Set CANARY word */
-	if (size > 0 && IS_BUF_CANARY(buf) && EOK != buf_set_canary(buf)) {
+	if (size > 0 && IS_BUF_CANARY(buf) && OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY word\n");
 		buf_free(buf);
 		TRY_ABORT();
 		return (NULL);
 	}
 
-	if (EOK != buf_is_valid(buf)) {
+	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid right after allocation!\n");
 		buf_free(buf);
 		TRY_ABORT();
@@ -367,7 +367,7 @@ int buf_is_string(buf_t *buf)
 		return (NULL);
 	}
 
-	if (EOK != buf_mark_string(buf)) {
+	if (OK != buf_mark_string(buf)) {
 		DE("Can't set STRING flag\n");
 		abort();
 	}
@@ -390,7 +390,7 @@ int buf_is_string(buf_t *buf)
 	buf = buf_new(0);
 	TESTP(buf, NULL);
 
-	if (EOK != buf_set_flag(buf, BUF_T_STRING)) {
+	if (OK != buf_set_flag(buf, BUF_T_STRING)) {
 		DE("Can't set STRING flag\n");
 		buf_free(buf);
 		TRY_ABORT();
@@ -398,7 +398,7 @@ int buf_is_string(buf_t *buf)
 	}
 	/* We set string into buffer. The 'room' len contain null terminatior, the 'used' for string
 	   doesn't */
-	if (EOK != buf_set_data(buf, str, size_without_0 + 1, size_without_0)) {
+	if (OK != buf_set_data(buf, str, size_without_0 + 1, size_without_0)) {
 		DE("Can't set string into buffer\n");
 		/* Just in case: Disconnect buffer from the buffer before release it */
 		buf->data = NULL;
@@ -432,7 +432,7 @@ error_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, si
 	/* TODO: Also flag STATIC should be tested */
 	buf_unmark_canary(buf);
 
-	return (EOK);
+	return (OK);
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
@@ -447,14 +447,14 @@ error_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 	}
 
 	rc = buf_set_data(buf, data, size, size);
-	if (EOK != rc) {
+	if (OK != rc) {
 		DE("Can't set data\n");
 		return (rc);
 	}
 
 	buf_unmark_canary(buf);
 	buf_mark_ro(buf);
-	return (EOK);
+	return (OK);
 }
 
 /*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf)
@@ -475,7 +475,7 @@ error_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 	void *data;
 	TESTP(buf, NULL);
 	data = buf_steal_data(buf);
-	if (EOK != buf_free(buf)) {
+	if (OK != buf_free(buf)) {
 		DE("Warning! Memory leak: can't clean buf_t!");
 		TRY_ABORT();
 	}
@@ -529,14 +529,14 @@ error_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 
 	/* If the buffer use canary add it to the end */
 
-	if (IS_BUF_CANARY(buf) && EOK != buf_set_canary(buf)) {
+	if (IS_BUF_CANARY(buf) && OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY\b");
 		TRY_ABORT();
 		return (ENOKEY);
 	}
 
 	BUF_TEST(buf);
-	return (EOK);
+	return (OK);
 }
 
 error_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
@@ -554,7 +554,7 @@ error_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
 	}
 
 	if (buf->used + expect <= buf->room) {
-		return (EOK);
+		return (OK);
 	}
 
 	return (buf_add_room(buf, expect));
@@ -564,7 +564,7 @@ error_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 
-	if (EOK != buf_is_valid(buf)) {
+	if (OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
 	}
 
@@ -583,14 +583,14 @@ error_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 	buf->used = buf->room = 0;
 	buf->flags = 0;
 
-	return (EOK);
+	return (OK);
 }
 
 error_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 
-	if (EOK != buf_is_valid(buf)) {
+	if (OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
 	}
 
@@ -601,7 +601,7 @@ error_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 		return (EACCES);
 	}
 
-	if (EOK != buf_clean(buf)) {
+	if (OK != buf_clean(buf)) {
 		DE("Can't clean buffer, stopped operation, returning error\n");
 		TRY_ABORT();
 		return (ECANCELED);
@@ -610,7 +610,7 @@ error_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	TFREE_SIZE(buf, sizeof(buf_t));
 	/* The buffer is released. Write down statistics. */
 	buf_release_num_inc();
-	return (EOK);
+	return (OK);
 }
 
 error_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size)
@@ -647,7 +647,7 @@ error_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size
 	memcpy(buf->data + buf->used, new_data, size);
 	buf->used += size;
 	BUF_TEST(buf);
-	return (EOK);
+	return (OK);
 }
 
 ssize_t buf_used(/*@null@*/buf_t *buf)
@@ -674,12 +674,12 @@ error_t buf_pack(/*@null@*/buf_t *buf)
 	/*** If buffer is empty we have nothing to do */
 
 	if (NULL == buf->data) {
-		return (EOK);
+		return (OK);
 	}
 
 	/*** Sanity check: dont' process invalide buffer */
 
-	if (EOK != buf_is_valid(buf)) {
+	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - can't proceed\n");
 		return (ECANCELED);
 	}
@@ -687,13 +687,13 @@ error_t buf_pack(/*@null@*/buf_t *buf)
 	/*** Should we really pack it? */
 	if (buf->used == buf->room) {
 		/* No, we don't need to pack it */
-		return (EOK);
+		return (OK);
 	}
 
 	/*** If the buffer is a string, the used should be == (room - 1): after the string we have '\0' */
 	if (IS_BUF_STRING(buf) && buf->used == (buf->room - 1)) {
 		/* Looks like the buffer should not be packed */
-		return (EOK);
+		return (OK);
 	}
 
 	/* Here we shrink the buffer */
@@ -734,7 +734,7 @@ error_t buf_pack(/*@null@*/buf_t *buf)
 
 	/* Here we are if buf->used == buf->room */
 	BUF_TEST(buf);
-	return (EOK);
+	return (OK);
 }
 
 /* Experimantal: Try to set the buf used size automatically */
@@ -778,7 +778,7 @@ error_t buf_detect_used(/*@null@*/buf_t *buf)
 		buf->used = buf->room;
 	}
 
-	return (EOK);
+	return (OK);
 }
 
 #if 0
@@ -842,7 +842,7 @@ buf_t *buf_sprintf(const char *format, ...)
 	/* Allocate buffer: we need +1 for final '\0' */
 	rc = buf_add_room(buf, rc + 1);
 
-	if (EOK != rc) {
+	if (OK != rc) {
 		DE("Can't add room to buf\n");
 		if (buf_free(buf)) {
 			DE("Warning, can't free buf_t, possible memory leak\n");
@@ -855,14 +855,14 @@ buf_t *buf_sprintf(const char *format, ...)
 
 	if (rc < 0) {
 		DE("Can't print string\n");
-		if (EOK != buf_free(buf)) {
+		if (OK != buf_free(buf)) {
 			DE("Warning, can't free buf_t, possible memory leak\n");
 		}
 		return (NULL);
 	}
 
 	buf->used = buf->room - 1;
-	if (EOK != buf_is_valid(buf)) {
+	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - free and return\n");
 		TRY_ABORT();
 		buf_free(buf);
@@ -876,7 +876,7 @@ buf_t *buf_sprintf(const char *format, ...)
 /* Receive from socket; add to the end of the buf; return number of received bytes */
 ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags)
 {
-	int     rc       = EBAD;
+	int     rc       = BAD;
 	ssize_t received = -1;
 
 	TESTP(buf, EINVAL);
@@ -884,7 +884,7 @@ ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int 
 	/* Test that we have enough room in the buffer */
 	rc = buf_test_room(buf, expected);
 
-	if (EOK != rc) {
+	if (OK != rc) {
 		DE("Can't allocate enough room in buf\n");
 		TRY_ABORT();
 		return (ENOMEM);
