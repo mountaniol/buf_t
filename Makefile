@@ -2,13 +2,14 @@ GCC=gcc
 AR=ar
 #GCC=clang-10
 CFLAGS=-Wall -Wextra -rdynamic -O2
-DEBUG=-DDEBUG3
+DEBUG=-DDEBUG2
+#DEBUG=-DDEBUG3
 DEBUG += -DDERROR3
 #CFLAGS += -fanalyzer
 
 #GCCVERSION=$(shell gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/')
 
-DEBUG=-DDEBUG3
+#EBUG=-DDEBUG3
 
 # client daemon
 

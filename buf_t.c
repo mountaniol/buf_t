@@ -274,6 +274,7 @@ ret_t buf_is_valid(buf_t *buf)
 	/* If the 'used' area not '\0' terminated - invalid */
 	if (IS_BUF_STRING(buf) && (NULL != buf->data) && ('\0' != *(buf->data + buf->used))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
+		DE("used = %d, room = %d, last character = |%c|, string = %s\n", buf->used, buf->room, *(buf->data + buf->used), buf->data);
 		TRY_ABORT();
 		return (ECANCELED);
 	}
@@ -745,10 +746,12 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 	int used;
 	TESTP(buf, EINVAL);
 
+	#if 0
 	if (buf_is_valid(buf)) {
 		DE("Buffer is invalid, can't proceed\n");
 		return (ECANCELED);
 	}
+	#endif
 
 	/* If the buf is empty - return with error */
 	if (buf->room == 0) {
@@ -766,7 +769,7 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 		if (0 != buf->data[used] ) {
 			/* Set buf->used as 'used + 1' to keep finished \0 */
 			/* If used > room - we fix it later */
-			buf->used = used + 1;
+			buf->used = used - 1;
 			break;
 		}
 	}
