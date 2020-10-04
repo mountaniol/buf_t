@@ -505,7 +505,8 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 		canary = BUF_T_CANARY_SIZE;
 	}
 
-	tmp = realloc(buf->data, buf->room + size + canary);
+	//BUF_DUMP(buf);
+	tmp = realloc(buf->data, buf_room(buf) + size + canary);
 
 	/* Case 1: realloc can't reallocate */
 	if (NULL == tmp) {
@@ -774,7 +775,7 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 		}
 	}
 
-	/* Ir can happen if the buffer is full; in this case after while() the buf->used should be
+	/* It can happen if the buffer is full; in this case after while() the buf->used should be
 	   buf->room + 1 */
 	/* TODO: STRING buffer, CANARY */
 	if (buf->used > buf->room) {

@@ -26,10 +26,11 @@ size_t buf_realloc_max     = 0;         /* Max size of realloc */
 float  buf_realloc_average = 0;      /* Average size of realloc */
 
 
-void average_buf_size_inc(size_t buf_size)
-{
+#if 0
+void average_buf_size_inc(size_t buf_size){
 	/* TODO */
 }
+#endif
 
 void buf_allocs_num_inc()
 {
@@ -85,10 +86,11 @@ void buf_realloc_max_upd(size_t realloced)
 	}
 }
 
-void buf_realloc_average_upd(size_t realloced)
-{
+#if 0
+void buf_realloc_average_upd(size_t realloced){
 	/* TODO */
 }
+#endif
 
 
 void buf_t_stats_print()
