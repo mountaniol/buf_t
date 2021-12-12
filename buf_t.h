@@ -280,7 +280,7 @@ extern void buf_default_flags(buf_t_flags_t f);
  * @return err_t Returns EOK on success
  * 	Return EACCESS if the buffer is read-only
  */
-extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len);
+extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, buf_usize_t size, buf_usize_t len);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
@@ -301,7 +301,7 @@ extern ret_t buf_is_valid(buf_t *buf);
  * @param size_t size Data buffer size, may be 0
  * @return buf_t* New buf_t structure.
  */
-extern /*@null@*/ buf_t *buf_new(size_t size);
+extern /*@null@*/ buf_t *buf_new(buf_usize_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -310,7 +310,7 @@ extern /*@null@*/ buf_t *buf_new(size_t size);
  * @param size_t size
  * @return buf_t*
  */
-extern /*@null@*/ buf_t *buf_string(size_t size);
+extern /*@null@*/ buf_t *buf_string(buf_usize_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -323,7 +323,7 @@ extern /*@null@*/ buf_t *buf_string(size_t size);
  * 	Returns ECANCELED if data == NULL but size > 0
  * 	Returns EACCESS if this buffer already marked as read-only.
  */
-extern ret_t buf_set_data_ro(buf_t *buf, char *data, size_t size);
+extern ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -375,7 +375,7 @@ extern ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
  * 	ENOMEM if allocation of additional space failed. In this case the buffer kept untouched.
  * 	ENOKEY if the buffer marked as CAANRY but CANARY work can't be added.
  */
-extern ret_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
+extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size);
 
 /**
  * @func int buf_test_room(buf_t *buf, size_t expect)
@@ -390,7 +390,7 @@ extern ret_t buf_add_room(/*@null@*/buf_t *buf, size_t size);
  * 	EINVAL if buf is NULL or 'expected' == 0
  * 	Also can return all error statuses of buf_add_room()
  */
-extern ret_t buf_test_room(/*@null@*/buf_t *buf, size_t expect);
+extern ret_t buf_test_room(/*@null@*/buf_t *buf, buf_usize_t expect);
 
 /**
  * @func int buf_t_free_force(buf_t *buf)
@@ -417,7 +417,7 @@ extern ret_t buf_free(/*@only@*//*@null@*/buf_t *buf);
  * 	EACCESS if the 'buf' is read-only
  * 	ENOMEM if new memory can't be allocated
  */
-extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size);
+extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_usize_t size);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -576,7 +576,7 @@ extern ret_t buf_unmark_ro(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_compresed(buf_t *buf);
+extern ret_t buf_unmark_compressed(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -695,7 +695,7 @@ extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
  * @return ssize_t Number of received bytes
  * 	EINVAL if buf is NULL, else returns status of recv() function
  */
-extern ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags);
+extern ssize_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -705,7 +705,7 @@ extern ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, con
  * @param size_t size_without_0 Length of the string without terminating '\0'
  * @return buf_t* New buf_t containing the "str"
  */
-extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0);
+extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, buf_usize_t size_without_0);
 
 /* Additional defines */
 #ifdef BUF_DEBUG

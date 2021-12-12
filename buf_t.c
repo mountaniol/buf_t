@@ -110,7 +110,7 @@ ret_t buf_unmark_ro(buf_t *buf)
 	return (buf_rm_flag(buf, BUF_T_READONLY));
 }
 
-ret_t buf_unmark_compresed(buf_t *buf)
+ret_t buf_unmark_compressed(buf_t *buf)
 {
 	return (buf_rm_flag(buf, BUF_T_COMPRESSED));
 }
@@ -308,7 +308,7 @@ int buf_is_string(buf_t *buf)
 	return (1);
 }
 
-/*@null@*/ buf_t *buf_new(size_t size)
+/*@null@*/ buf_t *buf_new(buf_usize_t size)
 {
 	/*@temp@*/buf_t *buf;
 
@@ -357,7 +357,7 @@ int buf_is_string(buf_t *buf)
 	return (buf);
 }
 
-/*@null@*/ buf_t *buf_string(size_t size)
+/*@null@*/ buf_t *buf_string(buf_usize_t size)
 {
 	buf_t *buf = NULL;
 	buf = buf_new(size);
@@ -375,7 +375,7 @@ int buf_is_string(buf_t *buf)
 	return (buf);
 }
 
-/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, size_t size_without_0)
+/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, buf_usize_t size_without_0)
 {
 	buf_t *buf = NULL;
 	/* The string must be not NULL */
@@ -412,7 +412,7 @@ int buf_is_string(buf_t *buf)
 	return (buf);
 }
 
-ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size_t len)
+ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, buf_usize_t size, buf_usize_t len)
 {
 	TESTP(buf, EINVAL);
 	TESTP(data, EINVAL);
@@ -437,13 +437,13 @@ ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, size_t size, size
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
-ret_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
+ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
 {
 	int rc;
 	TESTP(buf, EINVAL);
 
 	if (NULL == data && size > 0) {
-		DE("Wrong arguments: data == NULL but size > 0 (%zu)\n", size);
+		DE("Wrong arguments: data == NULL but size > 0 (%u)\n", size);
 		return (ECANCELED);
 	}
 
@@ -483,13 +483,13 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, size_t size)
 	return (data);
 }
 
-ret_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
+ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
 {
 	void   *tmp   = NULL;
 	size_t canary = 0;
 
 	if (NULL == buf || 0 == size) {
-		DE("Bad arguments: buf == NULL (%p) or size == 0 (%zu)\b", buf, size);
+		DE("Bad arguments: buf == NULL (%p) or size == 0 (%u)\b", buf, size);
 		TRY_ABORT();
 		return (EINVAL);
 	}
@@ -541,7 +541,7 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, size_t size)
 	return (OK);
 }
 
-ret_t buf_test_room(/*@null@*/buf_t *buf, size_t expect)
+ret_t buf_test_room(/*@null@*/buf_t *buf, buf_usize_t expect)
 {
 	if (NULL == buf) {
 		DE("Got NULL\n");
@@ -615,12 +615,12 @@ ret_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	return (OK);
 }
 
-ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const size_t size)
+ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_usize_t size)
 {
 	size_t new_size;
 	if (NULL == buf || NULL == new_data || size < 1) {
 		/*@ignore@*/
-		DE("Wrong argument(s): b = %p, buf = %p, size = %zu\n", buf, new_data, size);
+		DE("Wrong argument(s): b = %p, buf = %p, size = %u\n", buf, new_data, size);
 		/*@end@*/
 		TRY_ABORT();
 		return (EINVAL);
@@ -878,7 +878,7 @@ buf_t *buf_sprintf(const char *format, ...)
 }
 
 /* Receive from socket; add to the end of the buf; return number of received bytes */
-ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags)
+ssize_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags)
 {
 	int     rc       = BAD;
 	ssize_t received = -1;

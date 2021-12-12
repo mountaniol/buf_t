@@ -8,11 +8,12 @@
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 
-#define PSPLITTER()  do{printf("++++++++++++++++++++++++++++\n");} while(0)
-#define PSTART(x)     do{printf("Running  test: [%s]\n", x);} while(0)
-#define PSTEP(x)      do{printf("Passed   step: [%s] +%d\n", x, __LINE__);} while(0)
-#define PSUCCESS(x) do{printf("Finished test: [%s] : OK\n", x);} while(0)
-#define PFAIL(x)   do{printf("Finished test: [%s] : FAIL [line +%d]\n", x, __LINE__);} while(0)
+#define PSPLITTER()  do{printf("+++++++++++++++++++++++++++++++++++++++++++++++\n\n");} while(0)
+#define PSPLITTER2()  do{printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");} while(0)
+#define PSTART(x)     do{printf("Beginning:   [%s]\n", x);} while(0)
+#define PSTEP(x)      do{ printf("Passed step: [%s] +%d\n", x, __LINE__);} while(0)
+#define PSUCCESS(x) do{PSPLITTER2();printf("PASS:        [%s]\n", x);} while(0)
+#define PFAIL(x)   do{PSPLITTER2(); printf("FAIL:        [%s] [line +%d]\n", x, __LINE__);} while(0)
 
 /* Create buffer with 0 size data */
 void test_buf_new_zero_size()
@@ -27,11 +28,15 @@ void test_buf_new_zero_size()
 		abort();
 	}
 
+	PSTEP("Buffer allocated with 0 room size");
+
 	if (buf->used != 0 || buf->room != 0) {
 		printf("0 size buffer: used (%d) or room (%d) != 0\n", buf->used, buf->room);
 		PFAIL("0 size buffer");
 		abort();
 	}
+
+	PSTEP("Tested: buf->used == 0 and buf->room == 0");
 
 	if (buf->data != NULL) {
 		printf("0 size buffer: data != NULL (%p)\n", buf->data);
@@ -39,6 +44,10 @@ void test_buf_new_zero_size()
 		abort();
 	}
 
+	PSTEP("Tested: buf->data == NULL");
+
+	buf_free(buf);
+	PSTEP("Released buf");
 	PSUCCESS("allocate 0 size buffer");
 }
 
@@ -57,7 +66,7 @@ void test_buf_new_increasing_size()
 		buf = buf_new(size);
 		if (NULL == buf) {
 			PFAIL("increasing size buffer");
-			printf("Tryed to allocate: %zu size\n", size);
+			printf("Tried to allocate: %zu size\n", size);
 			abort();
 		}
 
@@ -141,8 +150,8 @@ void test_buf_string(size_t buffer_init_size)
 		printf("After buf_add: wrong buf->used\n");
 		printf("Expected: buf->used = %zu\n", strlen(str) + strlen(str2));
 		printf("Current : buf->used = %d\n", buf->used);
-		printf("str = |%s| len = %ld\n", str, strlen(str));
-		printf("str2 = |%s| len = %ld\n", str2, strlen(str2));
+		printf("str = |%s| len = %zu\n", str, strlen(str));
+		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 
 		PFAIL("buf_string");
 		abort();
@@ -152,8 +161,8 @@ void test_buf_string(size_t buffer_init_size)
 		printf("[buf->used != added strings]\n");
 		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf->data), strlen(str) + strlen(str2));
 		printf("[String is: |%s|, added strings: |%s%s|]\n", buf->data, str, str2);
-		printf("str = |%s| len = %ld\n", str, strlen(str));
-		printf("str2 = |%s| len = %ld\n", str2, strlen(str2));
+		printf("str = |%s| len = %zu\n", str, strlen(str));
+		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		PFAIL("buf_string");
 		abort();
 	}
@@ -426,7 +435,7 @@ void test_buf_canary(void)
 	/* Now we copy the full buffer into buf->data and such we break the canary pattern */
 	memcpy(buf->data, buf_data, buf_data_size);
 
-	PSTEP("Corrupted buf->data");
+	PSTEP("Corrupted buf->data: we expect an ERR");
 
 	/* Test canary: we expect it to be wrong */
 	if (OK == buf_test_canary(buf)) {
@@ -434,7 +443,7 @@ void test_buf_canary(void)
 		abort();
 	}
 
-	PSTEP("The canary is broken. It is what expected");
+	PSTEP("The canary is broken. It is what expected to be");
 
 	if (OK != buf_set_canary(buf)) {
 		PFAIL("buf_canary: can't set canary on the buffer");
@@ -464,7 +473,7 @@ void test_buf_canary(void)
 		abort();
 	}
 
-	PSTEP("Buffer freed");
+	PSTEP("Buffer released");
 
 	free(buf_data);
 
