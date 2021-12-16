@@ -132,8 +132,24 @@ typedef enum {
 typedef uint8_t buf_t_flags_t;
 
 /* Size of 'room' and 'used':
- * 1. If this type is "uint32", the max size of data buffer is:
- * 4294967295 bytes, or 4294967 KB, or 4294 Bb
+ * 1. If this type is "uint64", the max size of data buffer is:
+ * 18446744073709551615 bytes,
+ * or 18446744073709552 KB,
+ * or 18446744073709.550781 Mb
+ * or 18446744073.709552765 Gb
+ * or 18446744.073709551245 Tb
+ *
+ * Large enough to keep whatever you want, at least for the next 10 years )
+ *
+ * 2. In case of CIRCULAR buffer we use half of the 'used' field to keep head of the buffer,
+ * another half to keep the tail. In this case max value of the head tail is:
+ *
+ * 4294967295 bytes,
+ * or 4294967.295 Kb
+ * or 4294.967295 Mb
+ * or 4.294967295 Gb
+ *
+ * Not as impressive as uint64. In case we need more, the type should be increased to uint128
  * 
  * 2. If this size redefined to uint16, the max size of data buffer is:
  * 65535 bytes, or 65 Kilobyte
@@ -144,15 +160,23 @@ typedef uint8_t buf_t_flags_t;
  * 
  */
 
-typedef uint32_t buf_usize_t;
+typedef uint64_t buf_usize_t;
+typedef uint32_t buf_circ_usize_t;
+
+typedef struct head_tail_struct {
+	buf_circ_usize_t head;
+	buf_circ_usize_t tail;
+} head_tail_t;
 
 /* Simple struct to hold a buffer / string and its size / lenght */
 
 #ifdef BUF_DEBUG
-struct buf_t_struct
-{
+struct buf_t_struct {
 	buf_usize_t room;           /* Allocated size */
-	buf_usize_t used;           /* Used size */
+	union {
+		buf_usize_t used;           /* Used size */
+		head_tail_t ht;             /* Head and tail of circular buffer */
+	};
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
 	/*@temp@*/char *data;       /* Pointer to data */
 
@@ -166,10 +190,12 @@ struct buf_t_struct
 
 #else /* Not debug */
 /* Simple struct to hold a buffer / string and its size / lenght */
-struct buf_t_struct
-{
+struct buf_t_struct {
 	buf_usize_t room;           /* Allocated size */
-	buf_usize_t used;           /* Used size */
+	union {
+		buf_usize_t used;           /* Used size */
+		head_tail_t ht;             /* Head and tail of circular buffer */
+	};
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
 	/*@temp@*/char *data;       /* Pointer to data */
 };
@@ -179,25 +205,44 @@ typedef struct buf_t_struct buf_t;
 
 /* buf_t flags */
 
-/* We may mark the buffer as string buffer. In this case, additional test enabled */
-#define BUF_T_STRING      (1)
+/* How many bits are reserved for buffer type */
+#define BUF_T_TYPE_WIDTH 3
+
+/* We use mask to isolate type from other flags */
+#define BUF_T_TYPE_MASK  0x07
+
+/** Types **/
+/* String buffer. In this case, additional tests enabled */
+#define BUF_T_STRING        1
+
+/* Bit buffer */
+#define BUF_T_BIT      		2
+
+/* Circular buffer */
+#define BUF_T_CIRC			3
+#define BUF_T_CIRC_HEAD_WIDTH (32)
+#define BUF_T_CIRC_MASK (0x0000FFFF)
+
+/** Flags **/
 
 /* Buffer is read only; for example you may keep a static char * / const char * in buf_t */
-#define BUF_T_READONLY     (1<<1)
+#define BUF_T_READONLY     (1 << BUF_T_TYPE_WIDTH)
 
 /* Buffer is compressed */
-#define BUF_T_COMPRESSED (1<<2)
+#define BUF_T_COMPRESSED (1 << (BUF_T_TYPE_WIDTH + 1))
 
 /* Buffer is enctypted */
-#define BUF_T_ENCRYPTED  (1<<3)
+#define BUF_T_ENCRYPTED  (1 << (BUF_T_TYPE_WIDTH + 2))
 
 /* Buffer is enctypted */
-#define BUF_T_CANARY  (1<<4)
+#define BUF_T_CANARY  (1 << (BUF_T_TYPE_WIDTH + 3))
 
 /* Buffer is crc32 protected */
-#define BUF_T_CRC  (1<<5)
+#define BUF_T_CRC  (1 << (BUF_T_TYPE_WIDTH + 4))
 
-#define IS_BUF_STRING(buf) (buf->flags & BUF_T_STRING)
+#define IS_BUF_STRING(buf) ( (buf->flags & BUF_T_TYPE_MASK) == BUF_T_STRING )
+#define IS_BUF_BIT(buf) ( (buf->flags & BUF_T_TYPE_MASK) == BUF_T_BIT )
+#define IS_BUF_CIRC(buf) ( (buf->flags & BUF_T_TYPE_MASK) == BUF_T_CIRC )
 #define IS_BUF_RO(buf) (buf->flags & BUF_T_READONLY)
 #define IS_BUF_COMPRESSED(buf) (buf->flags & BUF_T_COMPRESSED)
 #define IS_BUF_ENCRYPTED(buf) (buf->flags & BUF_T_ENCRYPTED)
@@ -224,6 +269,7 @@ typedef struct buf_t_struct buf_t;
 //typedef uint16_t buf_t_canary_t;
 typedef uint8_t buf_t_canary_t;
 
+/* Canary size: the size of special buffer added after data to detect data tail corruption */
 #define BUF_T_CANARY_SIZE (sizeof(buf_t_canary_t))
 
 //#define BUF_T_CANARY_WORD ((buf_t_canary_t) 0xFEE1F4EE)
@@ -421,24 +467,104 @@ extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
- * @func ssize_t buf_used(buf_t *buf)
+ * @func buf_usize_t buf_used(buf_t *buf)
  * @brief Return size in bytes of used memory (which is buf->used)
  * @param buf_t * buf Buffer to check
  * @return ssize_t Number of bytes used on success
  * 	EINVAL if the 'buf' == NULL
  */
-extern ssize_t buf_used(/*@null@*/buf_t *buf);
+extern buf_usize_t buf_used(/*@null@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * ret_t buf_set_used(buf_t *buf, buf_usize_t used)
+ * 
+ * @brief Set a new value of the buf->used
+ * @param buf - Buffer to set the new value
+ * @param used - The new value to set
+ * 
+ * @return ret_t 
+ * @details 
+ */
+extern ret_t buf_set_used(buf_t *buf, buf_usize_t used);
+
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * ret_t buf_inc_used(buf_t *buf, buf_usize_t inc)
+ * 
+ * @brief Increment the buf->used value by 'inc'
+ * @param buf - The buffer to increment the value of the
+ *  		  buf->used
+ * @param inc - The value to add to the buf->used
+ * 
+ * @return ret_t OK on success, BAD on an error
+ * @details 
+ */
+extern ret_t buf_inc_used(buf_t *buf, buf_usize_t used);
+
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * ret_t buf_dec_used(buf_t *buf, buf_usize_t dec)
+ * 
+ * @brief Decrement value of the buf->used 
+ * @param buf - Buffer to decrement the '->used'
+ * @param dec - Decrement ->used by this value; the 'used' must
+ *  		   be > 0 (it can not be < 0, however)
+ * 
+ * @return ret_t OK on success, BAD on an error
+ * @details 
+ */
+extern ret_t buf_dec_used(buf_t *buf, buf_usize_t dec);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
- * @func ssize_t buf_room(buf_t *buf)
+ * @func buf_usize_t buf_room(buf_t *buf)
  * @brief Return size of memory currently allocated for this 'buf' (which is buf->room)
  * @param buf_t * buf Buffer to test
  * @return ssize_t How many bytes allocated for this 'buf'
  * 	EINVAL if the 'buf' == NULL
  */
-extern ssize_t buf_room(/*@null@*/buf_t *buf);
+extern buf_usize_t buf_room(/*@null@*/buf_t *buf);
 
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * ret_t buf_set_room(buf_t *buf, buf_usize_t room)
+ * 
+ * @brief Set new buf->room value
+ * @param buf - Buffer to set the a value
+ * @param room - The new value of buf->room to set
+ * 
+ * @return ret_t OK on success, BAD on an error
+ * @details 
+ */
+extern ret_t buf_set_room(/*@null@*/buf_t *buf, buf_usize_t room);
+
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * ret_t buf_inc_room(buf_t *buf, buf_usize_t inc)
+ * 
+ * @brief Increment value of buf->room by 'inc' value
+ * @param buf - Buffer to increment the buf->room value
+ * @param inc - The value to add to buf->room
+ * 
+ * @return ret_t OK on sucess, BAD on an error
+ * @details 
+ */
+extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_usize_t inc);
+
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * ret_t buf_dec_room(buf_t *buf, buf_usize_t dec)
+ * 
+ * @brief Decrement the value of buf->room by 'dec' value
+ * @param buf - The buffer to decrement buf->room
+ * @param dec - The value to substract from nuf->room
+ * 
+ * @return ret_t OK on sucess, BAD on an error
+ * @details The 'dec' must be less or equal to the buf->room,
+ *  		else BAD error returned and no value decremented
+ */
+extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_usize_t dec);
 /**
  * @author Sebastian Mountaniol (01/06/2020)
  * @func err_t buf_pack(buf_t *buf)
@@ -608,11 +734,14 @@ extern ret_t buf_unmark_crc(buf_t *buf);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_set_canary(buf_t *buf)
- * @brief Set CANARY maer in the end of the buffer. The buf_t must be marked as CANARY.
+ * @brief Set the CANARY mark in the end of the buffer. The
+ *  	  buf_t must be marked as CANARY, else an error
+ *  	  returned.
  * @param buf_t * buf Buffer to set CANARy pattern
  * @return err_t EOK on success,
  * 	EINVAL if buf is NULL,
- * 	ECANCELED if buf does not have CANARY or if CANARY pattern is bad right after it set
+ *  ECANCELED if the buf does not have CANARY or if the CANARY
+ *  pattern is not valid right after it set
  * @details If the buf doesn't have CANARY flag it will return ECANCELED.
  */
 extern ret_t buf_set_canary(buf_t *buf);
@@ -672,6 +801,31 @@ extern void buf_print_flags(buf_t *buf);
  */
 extern int buf_is_string(buf_t *buf);
 
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * int buf_is_bit(buf_t *buf)
+ * 
+ * @brief Test if the buffer is a bit buffer
+ * @param buf - Buffer to test
+ * 
+ * @return int OK if it is a bit buffer, not OK if it is not a
+ *  	   bit buffer
+ * @details 
+ */
+extern int buf_is_bit(buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (12/16/21)
+ * int buf_is_circ(buf_t *buf)
+ * 
+ * @brief Test if the buffer is a circular buffer
+ * @param buf - Buffer to test
+ * 
+ * @return int - OK  if the buffer is a circular buffer, not OK
+ *  	   otherwise
+ * @details 
+ */
+extern int buf_is_circ(buf_t *buf);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_detect_used(buf_t *buf)

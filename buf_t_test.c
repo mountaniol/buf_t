@@ -30,8 +30,8 @@ void test_buf_new_zero_size()
 
 	PSTEP("Buffer allocated with 0 room size");
 
-	if (buf->used != 0 || buf->room != 0) {
-		printf("0 size buffer: used (%d) or room (%d) != 0\n", buf->used, buf->room);
+	if (buf_used(buf) != 0 || buf_room(buf) != 0) {
+		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_used(buf), buf_room(buf));
 		PFAIL("0 size buffer");
 		abort();
 	}
@@ -70,8 +70,8 @@ void test_buf_new_increasing_size()
 			abort();
 		}
 
-		if (buf->used != 0 || buf->room != size) {
-			printf("increasing size buffer: used (%d) !=0 or room (%d) != %zu\n", buf->used, buf->room, size);
+		if (buf_used(buf) != 0 || buf_room(buf) != size) {
+			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_used(buf), buf_room(buf), size);
 			PFAIL("increasing size buffer");
 			abort();
 		}
@@ -146,10 +146,10 @@ void test_buf_string(size_t buffer_init_size)
 		abort();
 	}
 
-	if (buf->used != strlen(str) + strlen(str2)) {
+	if (buf_used(buf) != strlen(str) + strlen(str2)) {
 		printf("After buf_add: wrong buf->used\n");
 		printf("Expected: buf->used = %zu\n", strlen(str) + strlen(str2));
-		printf("Current : buf->used = %d\n", buf->used);
+		printf("Current : buf->used = %ld\n", buf_used(buf));
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 
@@ -220,7 +220,7 @@ void test_buf_pack_string(void)
 		abort();
 	}
 
-	if (buf->used != (len + len2)) {
+	if (buf_used(buf) != (len + len2)) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -237,13 +237,13 @@ void test_buf_pack_string(void)
 	}
 
 	/* Test that the packed buffer has the right size */
-	if (buf->used != (len + len2)) {
+	if (buf_used(buf) != (len + len2)) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf->used != buf->room - 1) {
+	if (buf_used(buf) != buf_room(buf) - 1) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -315,7 +315,7 @@ void test_buf_pack(void)
 
 	PSTEP("Added buffer into buf_t");
 
-	if (buf->used != buf_data_size) {
+	if (buf_used(buf) != buf_data_size) {
 		PFAIL("buf_pack");
 		abort();
 	}
@@ -336,15 +336,15 @@ void test_buf_pack(void)
 	PSTEP("Packed buf_t");
 
 	/* Test that the packed buffer has the right size */
-	if (buf->used != buf_data_size) {
+	if (buf_used(buf) != buf_data_size) {
 		PFAIL("buf_pack");
 		abort();
 	}
 	PSTEP("That buf->used is right");
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf->used != buf->room) {
-		printf("buf->room (%d) != buf->used (%d)\n", buf->room, buf->used);
+	if (buf_used(buf) != buf_room(buf)) {
+		printf("buf->room (%ld) != buf->used (%ld)\n", buf_room(buf), buf_used(buf));
 		PFAIL("buf_pack");
 		abort();
 	}
@@ -411,7 +411,7 @@ void test_buf_canary(void)
 
 	PSTEP("Added buffer into buf_t");
 
-	if (buf->used != buf_data_size - 1) {
+	if (buf_used(buf) != buf_data_size - 1) {
 		PFAIL("buf_pack");
 		abort();
 	}

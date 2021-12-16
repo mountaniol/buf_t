@@ -1,3 +1,4 @@
+/** @file */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -17,9 +18,11 @@ static char          g_abort_on_err = 0;
 /* Flags: set on every new buffer */
 static buf_t_flags_t g_flags;
 
+/** If there is 'abort on error' is set, this macro stops
+ *  execution and generates core file */
 #define TRY_ABORT() do{ if(g_abort_on_err) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
 
-buf_t_flags_t buf_save_flags()
+buf_t_flags_t buf_save_flags(void)
 {
 	return (g_flags);
 }
@@ -66,7 +69,7 @@ static ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 	return (OK);
 }
 
-/***** Set of function to add flag to buffer */
+/***** Set of functions to add a flag to the buffer */
 
 ret_t buf_mark_string(buf_t *buf)
 {
@@ -98,7 +101,7 @@ ret_t buf_mark_crc(buf_t *buf)
 	return (buf_set_flag(buf, BUF_T_CRC));
 }
 
-/***** Set of function to remove flag from buffer */
+/***** Set of functions to remove a flag from the buffer */
 
 ret_t buf_unmark_string(buf_t *buf)
 {
@@ -130,7 +133,7 @@ ret_t buf_unmark_crc(buf_t *buf)
 	return (buf_rm_flag(buf, BUF_T_CRC));
 }
 
-/***** CANARY: Protect the buffer */
+/***** CANARY: Protect the buffer *****/
 
 /* Set canary word in the end of the buf
  * If buf has 'BUF_T_CANARY' flag set, it means
@@ -149,7 +152,7 @@ ret_t buf_set_canary(buf_t *buf)
 	}
 
 	canary = BUF_T_CANARY_CHAR_PATTERN;
-	canary_p = (buf_t_canary_t *)(buf->data + buf->room);
+	canary_p = (buf_t_canary_t *)(buf->data + buf_room(buf));
 	memcpy(canary_p, &canary, BUF_T_CANARY_SIZE);
 
 	/* Test that the canary pattern set */
@@ -161,28 +164,92 @@ ret_t buf_set_canary(buf_t *buf)
 	return (OK);
 }
 
-/* This function will add canary after existing buffer
- * and add CANARY flag. The buffer room will be decreased by 1.
- * If buf->used == buf->room, the ->used as well be decreased.
- * If this buffer contains string, i.e.flag BUF_T_STRING is set,
- * a '\0' will be added before canary 
+buf_usize_t buf_used(buf_t *buf)
+{
+	TESTP_ASSERT(buf, "Received NULL");
+
+	/* In case it is a circ buffer, */
+	if (OK == buf_is_circ(buf)) {
+		DD("The buffer is CIRC\n");
+		if (buf->ht.head <= buf->ht.tail) {
+			return (buf->ht.head - buf->ht.tail);
+		}
+		return (buf_room(buf) - (buf->ht.head - buf->ht.tail));
+	}
+
+	return (buf->used);
+}
+
+ret_t buf_set_used(buf_t *buf, buf_usize_t used)
+{
+	TESTP_ASSERT(buf, "Received NULL");
+
+	/* In case it is a circ buffer, */
+	if (OK == buf_is_circ(buf)) {
+		DE("Can not set ->used for CIRC fuffer - use 'buf_set_head_tail()' instead\n");
+		abort();
+	}
+
+	buf->used = used;
+	return OK;
+}
+
+ret_t buf_inc_used(buf_t *buf, buf_usize_t inc)
+{
+	TESTP_ASSERT(buf, "Received NULL");
+
+	/* In case it is a circ buffer, */
+	if (OK == buf_is_circ(buf)) {
+		DE("Can not add to ->used for CIRC fuffer - use 'buf_add_head_tail()' instead\n");
+		abort();
+	}
+	buf->used += inc;
+	return OK;
+}
+
+ret_t buf_dec_used(buf_t *buf, buf_usize_t dec)
+{
+	TESTP_ASSERT(buf, "Received NULL");
+
+	/* In case it is a circ buffer, */
+	if (OK == buf_is_circ(buf)) {
+		DE("Can not add to ->used for CIRC fuffer - use 'buf_add_head_tail()' instead\n");
+		abort();
+	}
+
+	if (dec > buf_used(buf)) {
+		DE("Can not decrement buf->used: the dec > buf->used (%ld > %ld)\n",
+		   dec, buf_used(buf));
+		return BAD;
+	}
+
+	if (buf->used >= dec) {
+		buf->used -= dec;
+	}
+	return OK;
+}
+
+/* This function will add canary bits after an existing buffer
+ * and add the CANARY flag. The buffer room will be decreased by 1 (byte).
+ * If buf->used == buf->room, the ->used be decreased as well.
+ * If this buffer contains a string, i.e.type is BUF_T_STRING,
+ * a '\0' will be added before the canary bits
  */
 ret_t buf_force_canary(buf_t *buf)
 {
 	TESTP(buf, EINVAL);
 
-	if (buf->used < BUF_T_CANARY_SIZE) {
+	if (buf_used(buf) < BUF_T_CANARY_SIZE) {
 		DE("Buffer is to small for CANARY word\n");
 		TRY_ABORT();
 		return (ECANCELED);
-
 	}
 
-	if (buf->used == buf->room) {
-		buf->used -= BUF_T_CANARY_SIZE;
+	if (buf_used(buf) == buf_room(buf)) {
+		buf_dec_used(buf, BUF_T_CANARY_SIZE);
 	}
 
-	buf->room -= BUF_T_CANARY_SIZE;
+	buf_dec_room(buf, BUF_T_CANARY_SIZE);
 	return (buf_set_canary(buf));
 }
 
@@ -197,11 +264,11 @@ ret_t buf_test_canary(buf_t *buf)
 		return (ECANCELED);
 	}
 
-	if (0 == memcmp(buf->data + buf->room, &canary, BUF_T_CANARY_SIZE)) {
+	if (0 == memcmp(buf->data + buf_room(buf), &canary, BUF_T_CANARY_SIZE)) {
 		return (OK);
 	}
 
-	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf->room));
+	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf_room(buf)));
 
 	TRY_ABORT();
 	return (BAD);
@@ -218,7 +285,7 @@ buf_t_canary_t buf_get_canary(buf_t *buf)
 	}
 
 	//memcpy(&canary, buf->data + buf->room, BUF_T_CANARY_SIZE);
-	canary_p = (buf_t_canary_t *)(buf->data + buf->room);
+	canary_p = (buf_t_canary_t *)(buf->data + buf_room(buf));
 	return (*canary_p);
 }
 
@@ -232,6 +299,7 @@ void buf_print_flags(buf_t *buf)
 	if (IS_BUF_CRC(buf)) DDD("Buffer is CRC\n");
 }
 
+/* TODO: SPlit this funtion into set of function per type */
 /* Validate sanity of buf_t */
 ret_t buf_is_valid(buf_t *buf)
 {
@@ -242,7 +310,8 @@ ret_t buf_is_valid(buf_t *buf)
 	}
 
 	/* buf->used always <= buf->room */
-	if (buf->used > buf->room) {
+	/* TODO: not in case of CIRC buffer */
+	if (buf_used(buf) > buf_room(buf)) {
 		DE("Invalid buf: buf->used > buf->room\n");
 		TRY_ABORT();
 		return (ECANCELED);
@@ -250,37 +319,37 @@ ret_t buf_is_valid(buf_t *buf)
 
 	/* The buf->data may be NULL if and only if both buf->used and buf->room == 0; However, we don't
 	   check buf->used: we tested that it <= buf->room already */
-	if (NULL == buf->data && buf->room > 0) {
-		DE("Invalid buf: buf->data == NULL but buf->room > 0 (%d)\n", buf->room);
+	if ((NULL == buf->data) && (buf_room(buf) > 0)) {
+		DE("Invalid buf: buf->data == NULL but buf->room > 0 (%ld)\n", buf_room(buf));
 		TRY_ABORT();
 		return (ECANCELED);
 	}
 
 	/* And vice versa: if buf->data != NULL the buf->room must be > 0 */
-	if (NULL != buf->data && 0 == buf->room) {
+	if ((NULL != buf->data) && (0 == buf_room(buf))) {
 		DE("Invalid buf: buf->data != NULL but buf->room == 0\n");
 		TRY_ABORT();
 		return (ECANCELED);
 	}
 
 	/* If the buf is string than room must be > used */
-	if (IS_BUF_STRING(buf) && (NULL != buf->data) && (buf->room <= buf->used)) {
-		DE("Invalid STRING buf: buf->used (%d) >= buf->room (%d)\n", buf->used, buf->room);
+	if (IS_BUF_STRING(buf) && (NULL != buf->data) && (buf_room(buf) <= buf_used(buf))) {
+		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_used(buf), buf_room(buf));
 		TRY_ABORT();
 		return (ECANCELED);
 	}
 
 	/* For string buffers only: check that the string is null terminated */
 	/* If the 'used' area not '\0' terminated - invalid */
-	if (IS_BUF_STRING(buf) && (NULL != buf->data) && ('\0' != *(buf->data + buf->used))) {
+	if (IS_BUF_STRING(buf) && (NULL != buf->data) && ('\0' != *(buf->data + buf_used(buf)))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
-		DE("used = %d, room = %d, last character = |%c|, string = %s\n", buf->used, buf->room, *(buf->data + buf->used), buf->data);
+		DE("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_used(buf), buf_room(buf), *(buf->data + buf_used(buf)), buf->data);
 		TRY_ABORT();
 		return (ECANCELED);
 	}
 
-	if (buf->room > 0 && IS_BUF_CANARY(buf) && (OK != buf_test_canary(buf))) {
-		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf->room;
+	if (buf_room(buf) > 0 && IS_BUF_CANARY(buf) && (OK != buf_test_canary(buf))) {
+		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_room(buf);
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
 		TRY_ABORT();
@@ -288,8 +357,8 @@ ret_t buf_is_valid(buf_t *buf)
 	}
 
 	/* In Read-Only buffer buf->room must be == bub->used */
-	if (IS_BUF_RO(buf) && (buf->room != buf->used)) {
-		DE("Warning: in Read-Only buffer buf->used (%d) != buf->room (%d)\n", buf->used, buf->room);
+	if (IS_BUF_RO(buf) && (buf_room(buf) != buf_used(buf))) {
+		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_used(buf), buf_room(buf));
 		TRY_ABORT();
 		return (ECANCELED);
 	}
@@ -308,10 +377,30 @@ int buf_is_string(buf_t *buf)
 	return (1);
 }
 
+int buf_is_bit(buf_t *buf)
+{
+	TESTP(buf, EINVAL);
+	if (IS_BUF_BIT(buf)) {
+		return (OK);
+	}
+	return (1);
+}
+
+int buf_is_circ(buf_t *buf)
+{
+	TESTP(buf, EINVAL);
+	if (IS_BUF_CIRC(buf)) {
+		return (OK);
+	}
+	return (1);
+}
+
 /*@null@*/ buf_t *buf_new(buf_usize_t size)
 {
 	/*@temp@*/buf_t *buf;
 
+	/* The real size of allocated  buffer can be more than used asked,
+	   the canary and the checksum space could be added */
 	size_t real_size = size;
 
 	buf = zmalloc(sizeof(buf_t));
@@ -320,11 +409,13 @@ int buf_is_string(buf_t *buf)
 		return (NULL);
 	}
 
+	/* Increase statistics of allocated buffers */
 	buf_allocs_num_inc();
 
+	/* Set global flags for the start */
 	buf->flags = g_flags;
 
-	/* If no buffer passed, but size given - allocate new buffer */
+	/* If a size is given than allocate a data */
 	if (size > 0) {
 
 		/* If CANARY is set in global flags add space for CANARY word */
@@ -332,12 +423,15 @@ int buf_is_string(buf_t *buf)
 			real_size += BUF_T_CANARY_SIZE;
 		}
 
+		/* TODO: If CRC flag set, allocale also space for CRC */
+
 		buf->data = zmalloc(real_size);
 		TESTP_ASSERT(buf->data, "Can't allocate buf->data");
 	}
 
-	buf->room = size;
-	buf->used = 0;
+	/* TODO: in case of CIRC buffer it is wrong */
+	buf_set_room(buf, size);
+	buf_set_used(buf, 0);
 
 	/* Set CANARY word */
 	if (size > 0 && IS_BUF_CANARY(buf) && OK != buf_set_canary(buf)) {
@@ -403,7 +497,8 @@ int buf_is_string(buf_t *buf)
 		DE("Can't set string into buffer\n");
 		/* Just in case: Disconnect buffer from the buffer before release it */
 		buf->data = NULL;
-		buf->used = buf->room = 0;
+		buf_set_room(buf, 0);
+		buf_set_used(buf, 0);
 		buf_free(buf);
 		TRY_ABORT();
 		return (NULL);
@@ -425,8 +520,8 @@ ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, buf_usize_t size,
 	}
 
 	buf->data = data;
-	buf->room = size;
-	buf->used = len;
+	buf_set_room(buf, size);
+	buf_set_used(buf, len);
 
 	/* If external data set we clean CANRY flag */
 	/* TODO: Don't do it. Just realloc the buffer to set CANARY in the end */
@@ -443,7 +538,7 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
 	TESTP(buf, EINVAL);
 
 	if (NULL == data && size > 0) {
-		DE("Wrong arguments: data == NULL but size > 0 (%u)\n", size);
+		DE("Wrong arguments: data == NULL but size > 0 (%lu)\n", size);
 		return (ECANCELED);
 	}
 
@@ -464,8 +559,8 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
 	TESTP(buf, NULL);
 	data = buf->data;
 	buf->data = NULL;
-	buf->room = 0;
-	buf->used = 0;
+	buf_set_room(buf, 0);
+	buf_set_used(buf, 0);
 
 	/* TODO: If CANARY used - zero it, dont reallocate the buffer */
 	return (data);
@@ -489,7 +584,7 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
 	size_t canary = 0;
 
 	if (NULL == buf || 0 == size) {
-		DE("Bad arguments: buf == NULL (%p) or size == 0 (%u)\b", buf, size);
+		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", buf, size);
 		TRY_ABORT();
 		return (EINVAL);
 	}
@@ -522,12 +617,12 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
 	}
 
 	/* Clean newely allocated memory */
-	memset(buf->data + buf->room, 0, size + canary);
+	memset(buf->data + buf_room(buf), 0, size + canary);
 
 	/* Case 3: realloc succidded, the same pointer - we do nothing */
 	/* <Beeep> */
 
-	buf->room += size;
+	buf_inc_room(buf, size);
 
 	/* If the buffer use canary add it to the end */
 
@@ -555,7 +650,7 @@ ret_t buf_test_room(/*@null@*/buf_t *buf, buf_usize_t expect)
 		return (EINVAL);
 	}
 
-	if (buf->used + expect <= buf->room) {
+	if (buf_used(buf) + expect <= buf_room(buf)) {
 		return (OK);
 	}
 
@@ -579,10 +674,11 @@ ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 
 	if (buf->data) {
 		/* Security: zero memory before it freed */
-		memset(buf->data, 0, buf->room);
+		memset(buf->data, 0, buf_room(buf));
 		free(buf->data);
 	}
-	buf->used = buf->room = 0;
+	buf_set_room(buf, 0);
+	buf_set_used(buf, 0);
 	buf->flags = 0;
 
 	return (OK);
@@ -620,7 +716,7 @@ ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_us
 	size_t new_size;
 	if (NULL == buf || NULL == new_data || size < 1) {
 		/*@ignore@*/
-		DE("Wrong argument(s): b = %p, buf = %p, size = %u\n", buf, new_data, size);
+		DE("Wrong argument(s): b = %p, buf = %p, size = %lu\n", buf, new_data, size);
 		/*@end@*/
 		TRY_ABORT();
 		return (EINVAL);
@@ -635,7 +731,7 @@ ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_us
 	new_size = size;
 	/* If this buffer is a string buffer, we should consider \0 after string. If this buffer is empty,
 	   we add +1 for the \0 terminator. If the buffer is not empty, we reuse existing \0 terminator */
-	if (IS_BUF_STRING(buf) && buf->used == 0) {
+	if (IS_BUF_STRING(buf) && buf_used(buf) == 0) {
 		new_size++;
 	}
 
@@ -646,24 +742,46 @@ ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_us
 		return (ENOMEM);
 	}
 
-	memcpy(buf->data + buf->used, new_data, size);
-	buf->used += size;
+	memcpy(buf->data + buf_used(buf), new_data, size);
+	buf_inc_used(buf, size);
 	BUF_TEST(buf);
 	return (OK);
 }
 
-ssize_t buf_used(/*@null@*/buf_t *buf)
-{
-	/* If buf is invalid we return '-1' costed into uint */
-	TESTP(buf, EINVAL);
-	return (buf->used);
-}
-
-ssize_t buf_room(/*@null@*/buf_t *buf)
+buf_usize_t buf_room(/*@null@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	TESTP(buf, EINVAL);
 	return (buf->room);
+}
+
+ret_t buf_set_room(/*@null@*/buf_t *buf, buf_usize_t room)
+{
+	/* If buf is invalid we return '-1' costed into uint */
+	TESTP(buf, EINVAL);
+	buf->room = room;
+	return OK;
+}
+
+ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_usize_t inc)
+{
+	/* If buf is invalid we return '-1' costed into uint */
+	TESTP(buf, EINVAL);
+	buf->room += inc;
+	return (OK);
+}
+
+ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_usize_t dec)
+{
+	/* If buf is invalid we return '-1' costed into uint */
+	TESTP(buf, EINVAL);
+	if (dec > buf_room(buf)) {
+		DE("Can'r decrement the room: dec > buf->room (%ld > %ld)\n", dec, buf_room(buf));
+		return BAD;
+	}
+
+	buf->room -= dec;
+	return (OK);
 }
 
 ret_t buf_pack(/*@null@*/buf_t *buf)
@@ -687,20 +805,20 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 	}
 
 	/*** Should we really pack it? */
-	if (buf->used == buf->room) {
+	if (buf_used(buf) == buf_room(buf)) {
 		/* No, we don't need to pack it */
 		return (OK);
 	}
 
 	/*** If the buffer is a string, the used should be == (room - 1): after the string we have '\0' */
-	if (IS_BUF_STRING(buf) && buf->used == (buf->room - 1)) {
+	if (IS_BUF_STRING(buf) && buf_used(buf) == (buf_room(buf) - 1)) {
 		/* Looks like the buffer should not be packed */
 		return (OK);
 	}
 
 	/* Here we shrink the buffer */
 
-	new_size = buf->used;
+	new_size = buf_used(buf);
 	if (IS_BUF_CANARY(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
 	}
@@ -724,10 +842,10 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 		buf->data = tmp;
 	}
 
-	buf->room = buf->used;
+	buf_set_room(buf, buf_used(buf));
 
 	if (IS_BUF_STRING(buf)) {
-		buf->room++;
+		buf_inc_room(buf, 1);
 	}
 
 	if (IS_BUF_CANARY(buf)) {
@@ -747,30 +865,30 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 	int used;
 	TESTP(buf, EINVAL);
 
-	#if 0
+#if 0
 	if (buf_is_valid(buf)) {
 		DE("Buffer is invalid, can't proceed\n");
 		return (ECANCELED);
 	}
-	#endif
+#endif
 
 	/* If the buf is empty - return with error */
-	if (buf->room == 0) {
+	if (0 == buf_room(buf)) {
 		DE("Tryed to detect used in empty buffer?\n");
 		TRY_ABORT();
 		return (ECANCELED);
 	}
 
-	used = buf->room;
+	used = buf_room(buf);
 	/* Run from tail to the beginning of the buffer */
 
 	/* TODO: Replace this with binary search */
 	while (used > 0) {
 		/* If found not null in the buffer... */
-		if (0 != buf->data[used] ) {
+		if (0 != buf->data[used]) {
 			/* Set buf->used as 'used + 1' to keep finished \0 */
 			/* If used > room - we fix it later */
-			buf->used = used - 1;
+			buf_set_used(buf, used - 1);
 			break;
 		}
 	}
@@ -778,8 +896,8 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 	/* It can happen if the buffer is full; in this case after while() the buf->used should be
 	   buf->room + 1 */
 	/* TODO: STRING buffer, CANARY */
-	if (buf->used > buf->room) {
-		buf->used = buf->room;
+	if (buf_used(buf) > buf_room(buf)) {
+		buf_set_used(buf, buf_room(buf));
 	}
 
 	return (OK);
@@ -854,7 +972,7 @@ buf_t *buf_sprintf(const char *format, ...)
 		return (NULL);
 	}
 	va_start(args, format);
-	rc = vsnprintf(buf->data, buf->room, format, args);
+	rc = vsnprintf(buf->data, buf_room(buf), format, args);
 	va_end(args);
 
 	if (rc < 0) {
@@ -865,7 +983,7 @@ buf_t *buf_sprintf(const char *format, ...)
 		return (NULL);
 	}
 
-	buf->used = buf->room - 1;
+	buf_set_used(buf, buf_room(buf) - 1);
 	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - free and return\n");
 		TRY_ABORT();
@@ -894,9 +1012,9 @@ ssize_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const
 		return (ENOMEM);
 	}
 
-	received = recv(socket, buf->data + buf->used, expected, flags);
+	received = recv(socket, buf->data + buf_used(buf), expected, flags);
 	if (received > 0) {
-		buf->used += received;
+		buf_inc_used(buf, received);
 	}
 
 	return (received);
@@ -908,3 +1026,4 @@ buf_t *buf_dirname(buf_t *filename){
 	/* Validate that 'filename' buffer is correct and at least bull terminated */
 }
 #endif
+
