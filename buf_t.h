@@ -6,7 +6,6 @@
 //#define BUF_DEBUG
 #define BUF_NOISY
 
-
 /*
  * buf_t is an implementation of abstract buffer.
  * This buffer keeps data and its size.
@@ -273,6 +272,7 @@ typedef struct buf_t_struct buf_t;
 /* We use 2 characters as canary tail = 1 short */
 //typedef uint16_t buf_t_canary_t;
 typedef uint8_t buf_t_canary_t;
+typedef uint8_t buf_t_checksum_t;
 
 /* Canary size: the size of special buffer added after data to detect data tail corruption */
 #define BUF_T_CANARY_SIZE (sizeof(buf_t_canary_t))
@@ -285,6 +285,8 @@ typedef uint8_t buf_t_canary_t;
 #define BUF_T_CANARY_SHORT_PATTERN 0XAAAA
 
 //0x12345678)
+
+#define BUF_T_CRC_SIZE (sizeof(buf_t_checksum_t))
 
 /* Size of a regular buf_t structure */
 #define BUF_T_STRUCT_SIZE (sizeof(buf_t))
@@ -351,7 +353,7 @@ extern void buf_default_flags(buf_t_flags_t f);
  * @return err_t Returns EOK on success
  * 	Return EACCESS if the buffer is read-only
  */
-extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, buf_usize_t size, buf_usize_t len);
+extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t size, const buf_usize_t len);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
@@ -373,15 +375,6 @@ extern ret_t buf_is_valid(buf_t *buf);
  * @return buf_t* New buf_t structure.
  */
 extern /*@null@*/ buf_t *buf_new(buf_usize_t size);
-
-/**
- * @author Sebastian Mountaniol (16/06/2020)
- * @func buf_t* buf_string(size_t size)
- * @brief Allocate buffer and mark it as STRING
- * @param size_t size
- * @return buf_t*
- */
-extern /*@null@*/ buf_t *buf_string(buf_usize_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -609,16 +602,6 @@ extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_usize_t dec);
 extern ret_t buf_pack(/*@null@*/buf_t *buf);
 
 /**
- * @author Sebastian Mountaniol (02/06/2020)
- * @func buf_t* buf_sprintf(char *format, ...)
- * @brief sprintf into buf_t
- * @param char * format Format (like in printf first argument )
- * @return buf_t*
- */
-extern buf_t *buf_sprintf(const char *format, ...);
-
-
-/**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func buf_t_flags_t buf_save_flags(void)
  * @brief Return current value of gloabs buf_t flags (the flags added to every new allocate buf_t)
@@ -657,6 +640,31 @@ extern void buf_restore_flags(buf_t_flags_t flags);
  */
 extern ret_t buf_mark_string(buf_t *buf);
 
+/**
+ * @author Sebastian Mountaniol (12/17/21)
+ * ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
+ * 
+ * @brief Set the buffer flags 
+ * @param buf - Buffer to set flags
+ * @param f - Flag(s) to set
+ *
+ * @return ret_t OK on success, EINVAL if NULL pointer received
+ * @details 
+ */
+extern ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f);
+
+/**
+ * @author Sebastian Mountaniol (12/17/21)
+ * ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
+ * 
+ * @brief Unset a flag (or flags) from the buffer flags
+ * @param buf - Buffer to unset flag(s)
+ * @param f - Flag(s) to unset
+ * 
+ * @return ret_t 
+ * @details 
+ */
+extern ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_mark_ro(buf_t *buf)
@@ -875,16 +883,6 @@ extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
  * 	EINVAL if buf is NULL, else returns status of recv() function
  */
 extern ssize_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags);
-
-/**
- * @author Sebastian Mountaniol (18/06/2020)
- * @func buf_t* buf_from_string(char *str, size_t size_without_0)
- * @brief Convert given string "str" into buf_t. The resulting buf_t is a nirmal STRING type buffer.
- * @param char * str String to convert
- * @param size_t size_without_0 Length of the string without terminating '\0'
- * @return buf_t* New buf_t containing the "str"
- */
-extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, buf_usize_t size_without_0);
 
 /* Additional defines */
 #ifdef BUF_DEBUG

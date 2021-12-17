@@ -5,18 +5,21 @@
 #include <stdarg.h>
 
 #include "buf_t.h"
+#include "buf_t_string.h"
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 
-#define PSPLITTER()  do{printf("+++++++++++++++++++++++++++++++++++++++++++++++\n\n");} while(0)
-#define PSPLITTER2()  do{printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");} while(0)
-#define PSTART(x)     do{printf("Beginning:   [%s]\n", x);} while(0)
-#define PSTEP(x)      do{ printf("Passed step: [%s] +%d\n", x, __LINE__);} while(0)
+int verbose = 0;
+
+#define PSPLITTER()  do{if(verbose > 0)printf("+++++++++++++++++++++++++++++++++++++++++++++++\n\n");} while(0)
+#define PSPLITTER2()  do{if(verbose > 0) printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");} while(0)
+#define PSTART(x)     do{if(verbose > 0) printf("Beginning:   [%s]\n", x);} while(0)
+#define PSTEP(x)      do{if(verbose > 0) printf("Passed step: [%s] +%d\n", x, __LINE__);} while(0)
 #define PSUCCESS(x) do{PSPLITTER2();printf("PASS:        [%s]\n", x);} while(0)
 #define PFAIL(x)   do{PSPLITTER2(); printf("FAIL:        [%s] [line +%d]\n", x, __LINE__);} while(0)
 
 /* Create buffer with 0 size data */
-void test_buf_new_zero_size()
+void test_buf_new_zero_size(void)
 {
 	buf_t *buf = NULL;
 	PSPLITTER();
@@ -52,7 +55,7 @@ void test_buf_new_zero_size()
 }
 
 /* Create buffers with increasing size */
-void test_buf_new_increasing_size()
+void test_buf_new_increasing_size(void)
 {
 	buf_t  *buf = NULL;
 	size_t size = 64;
@@ -85,7 +88,7 @@ void test_buf_new_increasing_size()
 		buf_free(buf);
 	}
 
-	printf("[Allocated up to %zu bytes buffer]\n", size);
+	if (verbose > 1) printf("[Allocated up to %zu bytes buffer]\n", size);
 	PSUCCESS("increasing size buffer");
 }
 
@@ -98,7 +101,7 @@ void test_buf_string(size_t buffer_init_size)
 	PSPLITTER();
 
 	PSTART("buf_string");
-	printf("[Asked string size: %zu]\n", buffer_init_size);
+	if (verbose > 1) printf("[Asked string size: %zu]\n", buffer_init_size);
 
 	buf = buf_string(buffer_init_size);
 	if (NULL == buf) {
@@ -115,7 +118,7 @@ void test_buf_string(size_t buffer_init_size)
 
 	PSTEP("Adding str");
 
-	#if 0
+#if 0
 	if (buf->used != (buf->room - 1)) {
 		printf("[After buf_add: wrong buf->used or buf->room]\n");
 		printf("[buf->used = %d, buf->room = %d]\n", buf->used, buf->room);
@@ -123,7 +126,7 @@ void test_buf_string(size_t buffer_init_size)
 		PFAIL("buf_string failed");
 		abort();
 	}
-	#endif
+#endif
 
 	if (strlen(buf->data) != strlen(str)) {
 		printf("[After buf_add: wrong string len of buf->data]\n");
@@ -133,10 +136,10 @@ void test_buf_string(size_t buffer_init_size)
 		abort();
 	}
 
-	#if 0
+#if 0
 	printf("After string: |%s|, str: |%s|\n", buf->data, str);
 	printf("After first string: buf->room = %d, buf->used = %d\n", buf->room, buf->used);
-	#endif
+#endif
 
 	PSTEP("Tested str added");
 
@@ -238,12 +241,14 @@ void test_buf_pack_string(void)
 
 	/* Test that the packed buffer has the right size */
 	if (buf_used(buf) != (len + len2)) {
+		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_used(buf), (len + len2));
 		PFAIL("buf_pack_string");
 		abort();
 	}
 
 	/* Test that buf->room = buf->used + 1 */
 	if (buf_used(buf) != buf_room(buf) - 1) {
+		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_used(buf), buf_room(buf));
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -266,6 +271,124 @@ void test_buf_pack_string(void)
 	free(con_str);
 
 	PSUCCESS("buf_pack_string");
+}
+
+/* Allocate string buffer. Add several strings. Pack it. Test that after the packing the buf is
+   correct. Test that the string in the buffer is correct. */
+void test_buf_str_concat(void)
+{
+	buf_t      *buf1    = NULL;
+	buf_t      *buf2    = NULL;
+	const char *str1    = "Jabala Labala Hoom";
+	const char *str2    = " Lalala";
+	char       *con_str = NULL;
+	size_t     len1;
+	size_t     len2;
+
+	len1 = strlen(str1);
+	len2 = strlen(str2);
+
+	PSPLITTER();
+
+	PSTART("buf_str_concat");
+
+	buf1 = buf_string(0);
+	if (NULL == buf1) {
+		PFAIL("buf_str_concat: Can't allocate buf1");
+		abort();
+	}
+
+	if(OK != buf_add(buf1, str1, len1)) {
+		PFAIL("buf_str_concat: Can't add string into buf2");
+		abort();
+	}
+
+	if (OK != buf_is_string(buf1)) {
+		PFAIL("buf_str_concat: buf1 is not a string buffer");
+		abort();
+	}
+
+	PSTEP("Allocated buf1");
+
+	buf2 = buf_string(0);
+	if (NULL == buf2) {
+		PFAIL("buf_str_concat: Can't allocate buf2");
+		abort();
+	}
+
+	if(OK != buf_add(buf2, str2, len2)) {
+		PFAIL("buf_str_concat: Can't add string into buf2");
+		abort();
+	}
+
+	if (OK != buf_is_string(buf2)) {
+		PFAIL("buf_str_concat: buf2 is not a string buffer");
+		abort();
+	}
+
+	PSTEP("Allocated buf2");
+
+	if (OK != buf_str_concat(buf1, buf2)) {
+		PFAIL("buf_str_concat: buf_str_concat returned an error");
+		abort();
+	}
+
+	PSTEP("buf_str_concat OK");
+
+	if (strlen(buf1->data) != (len1 + len2)) {
+		PFAIL("buf_str_concat: bad length");
+		abort();
+	}
+
+	PSTEP("string length match 1");
+
+	/* Test that the packed buffer has the right size */
+	if (buf_used(buf1) != (len1 + len2)) {
+		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_used(buf1), (len1 + len2));
+		PFAIL("buf_str_concat: wrong buf_used()");
+		abort();
+	}
+
+	PSTEP("string length match 2");
+
+	/* Test that buf->room = buf->used + 1 */
+	if (buf_used(buf1) != buf_room(buf1) - 1) {
+		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_used(buf1), buf_room(buf1));
+		PFAIL("buf_str_concat: buf_used(buf1) != buf_room(buf1) - 1");
+		abort();
+	}
+
+	PSTEP("buf_used, buf_room OK");
+
+	con_str = malloc(len1 + len2 + 1);
+	if (NULL == con_str) {
+		PFAIL("buf_str_concat: can't allocate memory\n");
+		abort();
+	}
+
+	memset(con_str, 0, len1 + len2 + 1);
+	sprintf(con_str, "%s%s", str1, str2);
+
+	if (0 != strcmp(buf1->data, con_str)) {
+		PFAIL("buf_str_concat: string is not the same");
+		abort();
+	}
+
+	PSTEP("strings compared OK");
+
+	if (OK != buf_free(buf1)) {
+		PFAIL("buf_str_concat: can't free buf1");
+		abort();
+	}
+
+	if (OK != buf_free(buf2)) {
+		PFAIL("buf_str_concat: can't free buf2");
+		abort();
+	}
+
+	free(con_str);
+
+	PSUCCESS("buf_str_concat");
 }
 
 void test_buf_pack(void)
@@ -291,7 +414,7 @@ void test_buf_pack(void)
 
 	buf_data = malloc(256);
 	if (NULL == buf_data) {
-		printf("Can't allocate buffer\n");
+		PFAIL("Can't allocate buffer");
 		abort();
 	}
 
@@ -357,7 +480,6 @@ void test_buf_pack(void)
 	PSUCCESS("buf_pack");
 }
 
-
 void test_buf_canary(void)
 {
 	buf_t         *buf          = NULL;
@@ -391,7 +513,7 @@ void test_buf_canary(void)
 
 	buf_data = malloc(256);
 	if (NULL == buf_data) {
-		printf("Can't allocate buffer\n");
+		PFAIL("Can't allocate buffer");
 		abort();
 	}
 
@@ -443,6 +565,8 @@ void test_buf_canary(void)
 		abort();
 	}
 
+	printf("Ignore previous ERR printout; we expected it\n");
+
 	PSTEP("The canary is broken. It is what expected to be");
 
 	if (OK != buf_set_canary(buf)) {
@@ -482,13 +606,13 @@ void test_buf_canary(void)
 	PSUCCESS("buf_canary");
 }
 
-int main()
+int main(void)
 {
 	/* Abort on any error */
-	DD("This is regular print\n");
-	DDD("This is extended print\n");
-	DE("This is error print\n");
-	DDE("This is extended error print\n");
+	//DD("This is regular print\n");
+	//DDD("This is extended print\n");
+	//DE("This is error print\n");
+	//DDE("This is extended error print\n");
 
 	buf_set_abort();
 	test_buf_new_zero_size();
@@ -498,11 +622,11 @@ int main()
 	test_buf_string(32);
 	test_buf_string(1024);
 	test_buf_pack_string();
+	test_buf_str_concat();
 	test_buf_pack();
-
 	test_buf_canary();
 
+	PSUCCESS("All tests passed, good work!");
 	buf_t_stats_print();
-
 	return (0);
 }

@@ -17,7 +17,7 @@
 /* Abort on error */
 static buf_t_flags_t g_abort_on_err = 0;
 
-buf_t_flags_t bug_get_abort_flag()
+buf_t_flags_t bug_get_abort_flag(void)
 {
 	return g_abort_on_err;
 }
@@ -56,7 +56,7 @@ void buf_default_flags(buf_t_flags_t f)
 }
 
 /* Set flag(s) of the buf */
-static ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
+ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EINVAL);
 	buf->flags |= f;
@@ -64,7 +64,7 @@ static ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f)
 }
 
 /* Clear flag(s) of the buf */
-static ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
+ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f)
 {
 	TESTP(buf, EINVAL);
 	buf->flags &= ~f;
@@ -303,8 +303,7 @@ void buf_print_flags(buf_t *buf)
 	if (IS_BUF_CRC(buf)) DDD("Buffer is CRC\n");
 }
 
-/* TODO: Split this funtion into set of function per type */
-/* Validate sanity of buf_t */
+/* Validate sanity of buf_t - common for all buffers */
 static ret_t buf_common_is_valid(buf_t *buf)
 {
 	if (NULL == buf) {
@@ -466,63 +465,7 @@ int buf_is_circ(buf_t *buf)
 	return (buf);
 }
 
-/*@null@*/ buf_t *buf_string(buf_usize_t size)
-{
-	buf_t *buf = NULL;
-	buf = buf_new(size);
-
-	if (NULL == buf) {
-		DE("buf allocation failed\n");
-		TRY_ABORT();
-		return (NULL);
-	}
-
-	if (OK != buf_mark_string(buf)) {
-		DE("Can't set STRING flag\n");
-		abort();
-	}
-	return (buf);
-}
-
-/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, buf_usize_t size_without_0)
-{
-	buf_t *buf = NULL;
-	/* The string must be not NULL */
-	TESTP(str, NULL);
-
-	/* Test that the string is '\0' terminated */
-	if (*(str + size_without_0) != '\0') {
-		DE("String is not null terminated\n");
-		TRY_ABORT();
-		return (NULL);
-	}
-
-	buf = buf_new(0);
-	TESTP(buf, NULL);
-
-	if (OK != buf_set_flag(buf, BUF_T_STRING)) {
-		DE("Can't set STRING flag\n");
-		buf_free(buf);
-		TRY_ABORT();
-		return (NULL);
-	}
-	/* We set string into buffer. The 'room' len contain null terminatior, the 'used' for string
-	   doesn't */
-	if (OK != buf_set_data(buf, str, size_without_0 + 1, size_without_0)) {
-		DE("Can't set string into buffer\n");
-		/* Just in case: Disconnect buffer from the buffer before release it */
-		buf->data = NULL;
-		buf_set_room(buf, 0);
-		buf_set_used(buf, 0);
-		buf_free(buf);
-		TRY_ABORT();
-		return (NULL);
-	}
-
-	return (buf);
-}
-
-ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, buf_usize_t size, buf_usize_t len)
+ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t size, const buf_usize_t len)
 {
 	TESTP(buf, EINVAL);
 	TESTP(data, EINVAL);
@@ -598,7 +541,9 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
 	void   *tmp   = NULL;
 	size_t canary = 0;
 
-	if (NULL == buf || 0 == size) {
+	TESTP(buf, BAD);
+
+	if (0 == size) {
 		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", buf, size);
 		TRY_ABORT();
 		return (EINVAL);
@@ -707,7 +652,7 @@ ret_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 		DE("Warning: buffer is invalid\n");
 	}
 
-	/* We don't free read-only buffer's data */
+	/* We can not release the data of read-only buffer */
 	if (IS_BUF_RO(buf)) {
 		DE("Warning: tried to free Read Only buffer\n");
 		TRY_ABORT();
@@ -743,12 +688,13 @@ ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_us
 		return (EACCES);
 	}
 
-	new_size = size;
-	/* If this buffer is a string buffer, we should consider \0 after string. If this buffer is empty,
-	   we add +1 for the \0 terminator. If the buffer is not empty, we reuse existing \0 terminator */
-	if (IS_BUF_STRING(buf) && buf_used(buf) == 0) {
-		new_size++;
+	/* Here we switch to a type-specific function */
+	switch (BUF_TYPE(buf)) {
+	case BUF_T_STRING:
+		return buf_str_add(buf, new_data, size);
 	}
+
+	new_size = size;
 
 	/* Add room if needed */
 	if (0 != buf_test_room(buf, new_size)) {
@@ -806,6 +752,11 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 
 	TESTP(buf, EINVAL);
 
+	switch (BUF_TYPE(buf)) {
+	case BUF_T_STRING:
+		return buf_str_pack(buf);
+	}
+
 	/*** If buffer is empty we have nothing to do */
 
 	if (NULL == buf->data) {
@@ -821,13 +772,7 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 
 	/*** Should we really pack it? */
 	if (buf_used(buf) == buf_room(buf)) {
-		/* No, we don't need to pack it */
-		return (OK);
-	}
-
-	/*** If the buffer is a string, the used should be == (room - 1): after the string we have '\0' */
-	if (IS_BUF_STRING(buf) && buf_used(buf) == (buf_room(buf) - 1)) {
-		/* Looks like the buffer should not be packed */
+		/* No need to pack it */
 		return (OK);
 	}
 
@@ -836,11 +781,6 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 	new_size = buf_used(buf);
 	if (IS_BUF_CANARY(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
-	}
-
-	/* If the buffer a string - keep 1 more for '\0' terminator */
-	if (IS_BUF_STRING(buf)) {
-		new_size += 1;
 	}
 
 	tmp = realloc(buf->data, new_size);
@@ -859,10 +799,6 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 
 	buf_set_room(buf, buf_used(buf));
 
-	if (IS_BUF_STRING(buf)) {
-		buf_inc_room(buf, 1);
-	}
-
 	if (IS_BUF_CANARY(buf)) {
 		buf_set_canary(buf);
 	}
@@ -872,20 +808,12 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 	return (OK);
 }
 
-/* Experimantal: Try to set the buf used size automatically */
+/* Experimental: Try to set the buf used size automatically */
 /* It can be useful if we copied manualy a string into buf_t and we want to update 'used' of the
    buf_t*/
 ret_t buf_detect_used(/*@null@*/buf_t *buf)
 {
-	int used;
 	TESTP(buf, EINVAL);
-
-#if 0
-	if (buf_is_valid(buf)) {
-		DE("Buffer is invalid, can't proceed\n");
-		return (ECANCELED);
-	}
-#endif
 
 	/* If the buf is empty - return with error */
 	if (0 == buf_room(buf)) {
@@ -894,28 +822,17 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 		return (ECANCELED);
 	}
 
-	used = buf_room(buf);
-	/* Run from tail to the beginning of the buffer */
-
-	/* TODO: Replace this with binary search */
-	while (used > 0) {
-		/* If found not null in the buffer... */
-		if (0 != buf->data[used]) {
-			/* Set buf->used as 'used + 1' to keep finished \0 */
-			/* If used > room - we fix it later */
-			buf_set_used(buf, used - 1);
-			break;
-		}
+	switch (BUF_TYPE(buf)) {
+	case BUF_T_STRING:
+		return buf_str_detect_used(buf);
+		break;
+	default:
+		DE("Not supported buf type %d\n", BUF_TYPE(buf));
+		return BAD;
 	}
 
-	/* It can happen if the buffer is full; in this case after while() the buf->used should be
-	   buf->room + 1 */
-	/* TODO: STRING buffer, CANARY */
-	if (buf_used(buf) > buf_room(buf)) {
-		buf_set_used(buf, buf_room(buf));
-	}
-
-	return (OK);
+	/* We should not get here */
+	return (BAD);
 }
 
 #if 0
@@ -957,58 +874,6 @@ buf_t *buf_extract_field(buf_t *buf, const char *delims, const char *skip, size_
 	}
 }
 #endif
-
-buf_t *buf_sprintf(const char *format, ...)
-{
-	va_list args;
-	buf_t   *buf = NULL;
-	int     rc   = -1;
-	TESTP(format, NULL);
-
-	/* Create buf_t with reserved room for the string */
-	buf = buf_string(0);
-	TESTP(buf, NULL);
-
-	va_start(args, format);
-	/* Measure string lengh */
-	rc = vsnprintf(NULL, 0, format, args);
-	va_end(args);
-
-	DDD("Measured string size: it is %d\n", rc);
-
-	/* Allocate buffer: we need +1 for final '\0' */
-	rc = buf_add_room(buf, rc + 1);
-
-	if (OK != rc) {
-		DE("Can't add room to buf\n");
-		if (buf_free(buf)) {
-			DE("Warning, can't free buf_t, possible memory leak\n");
-		}
-		return (NULL);
-	}
-	va_start(args, format);
-	rc = vsnprintf(buf->data, buf_room(buf), format, args);
-	va_end(args);
-
-	if (rc < 0) {
-		DE("Can't print string\n");
-		if (OK != buf_free(buf)) {
-			DE("Warning, can't free buf_t, possible memory leak\n");
-		}
-		return (NULL);
-	}
-
-	buf_set_used(buf, buf_room(buf) - 1);
-	if (OK != buf_is_valid(buf)) {
-		DE("Buffer is invalid - free and return\n");
-		TRY_ABORT();
-		buf_free(buf);
-
-		return (NULL);
-	}
-
-	return (buf);
-}
 
 /* Receive from socket; add to the end of the buf; return number of received bytes */
 ssize_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags)
