@@ -496,7 +496,7 @@ void test_buf_canary(void)
 	PSTART("buf_canary");
 
 	flags = buf_save_flags();
-	buf_unset_abort();
+	buf_unset_abort_flag();
 
 	buf = buf_new(0);
 	if (NULL == buf) {
@@ -614,7 +614,7 @@ int main(void)
 	//DE("This is error print\n");
 	//DDE("This is extended error print\n");
 
-	buf_set_abort();
+	buf_set_abort_flag();
 	test_buf_new_zero_size();
 	test_buf_new_increasing_size();
 	test_buf_string(0);

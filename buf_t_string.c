@@ -93,8 +93,14 @@ ret_t buf_str_is_valid(buf_t *buf)
 		DE("Can't set string into buffer\n");
 		/* Just in case: Disconnect buffer from the buffer before release it */
 		buf->data = NULL;
-		buf_set_room(buf, 0);
-		buf_set_used(buf, 0);
+		if(OK != buf_set_room(buf, 0)) {
+			DE("Can not set a new room value to the buffer\n");
+			return (NULL);
+		}
+		if(OK != buf_set_used(buf, 0)) {
+			DE("Can not set a new 'used' value to the buffer\n");
+			return (NULL);
+		}
 		buf_free(buf);
 		TRY_ABORT();
 		return (NULL);
@@ -127,80 +133,6 @@ ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const bu
 	BUF_TEST(buf);
 	return (OK);
 }
-
-
-#if 0
-ret_t buf_str_pack(/*@null@*/buf_t *buf){
-	void   *tmp     = NULL;
-	size_t new_size = -1;
-
-	TESTP(buf, EINVAL);
-
-	/*** If buffer is empty we have nothing to do */
-
-	if (NULL == buf->data) {
-		return (OK);
-	}
-
-	/*** Sanity check: dont' process invalide buffer */
-
-	if (OK != buf_is_valid(buf)) {
-		DE("Buffer is invalid - can't proceed\n");
-		TRY_ABORT();
-		return (ECANCELED);
-	}
-
-	/* If the buf room is 0 - nothing to do */
-	if (0 == buf_room(buf)) {
-		return OK;
-	}
-
-	/*** If the buffer is a string, the buf->used should be == (room - 1):
-		 after the string body we have additional '\0' which is not counted */
-	if (buf_used(buf) == (buf_room(buf) - 1)) {
-		/* Looks like the buffer should not be packed */
-		return (OK);
-	}
-
-	/* Here we shrink the buffer */
-
-	new_size = buf_used(buf);
-	if (IS_BUF_CANARY(buf)) {
-		new_size += BUF_T_CANARY_SIZE;
-	}
-
-	/* The buffer is a string - keep 1 more for '\0' terminator */
-	new_size += sizeof(char);
-
-	tmp = realloc(buf->data, new_size);
-
-	/* Case 1: realloc failed */
-	if (NULL == tmp) {
-		DE("Realloc failed\n");
-		TRY_ABORT();
-		return (ENOMEM);
-	}
-
-	/* Case 2: realloc succeeded, new memory returned */
-	/* No need to free the old memory - done by realloc */
-	if (NULL != tmp) {
-		buf->data = tmp;
-	}
-
-	buf_set_room(buf, buf_used(buf));
-
-	/* We must increase room size in size of string, to consider the terminating '\0' */
-	buf_inc_room(buf, 1);
-
-	if (IS_BUF_CANARY(buf)) {
-		buf_set_canary(buf);
-	}
-
-	/* Here we are if buf->used == buf->room */
-	BUF_TEST(buf);
-	return (OK);
-}
-#endif
 
 ret_t buf_str_detect_used(/*@null@*/buf_t *buf)
 {
@@ -238,7 +170,10 @@ ret_t buf_str_detect_used(/*@null@*/buf_t *buf)
 
 	DDD0("Setting new string size: %ld -> %ld\n", buf_used(buf), calculated_used_size);
 	/* No, the new size if less than the current */
-	buf_set_used(buf, calculated_used_size);
+	if(OK != buf_set_used(buf, calculated_used_size)) {
+		DE("Can not set a new 'used' value to the buffer\n");
+		return (BAD);
+	}
 	return (OK);
 }
 
@@ -286,7 +221,10 @@ ret_t buf_str_pack(/*@null@*/buf_t *buf)
 		buf->data = tmp;
 	}
 
-	buf_set_room(buf, new_size);
+	if(OK != buf_set_room(buf, new_size)) {
+		DE("Can not set a new room value to the buffer\n");
+		return (BAD);
+	}
 
 	return (OK);
 }
@@ -331,12 +269,15 @@ buf_t *buf_sprintf(const char *format, ...)
 		return (NULL);
 	}
 
-	buf_set_used(buf, buf_room(buf) - 1);
+	if(OK != buf_set_used(buf, buf_room(buf) - 1)) {
+		DE("Can not set a new 'used' value to the buffer\n");
+		return (NULL);
+	}
+
 	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - free and return\n");
 		TRY_ABORT();
 		buf_free(buf);
-
 		return (NULL);
 	}
 

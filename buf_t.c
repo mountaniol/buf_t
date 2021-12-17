@@ -35,13 +35,13 @@ void buf_restore_flags(buf_t_flags_t flags)
 	g_flags = flags;
 }
 
-void buf_set_abort(void)
+void buf_set_abort_flag(void)
 {
 	DDD("buf_t: enabled 'abort on error' state\n");
 	g_abort_on_err = 1;
 }
 
-void buf_unset_abort(void)
+void buf_unset_abort_flag(void)
 {
 	DDD("buf_t: disabled 'abort on error' state\n");
 	g_abort_on_err = 0;
@@ -248,10 +248,16 @@ ret_t buf_force_canary(buf_t *buf)
 	}
 
 	if (buf_used(buf) == buf_room(buf)) {
-		buf_dec_used(buf, BUF_T_CANARY_SIZE);
+		if (OK != buf_dec_used(buf, BUF_T_CANARY_SIZE)) {
+			DE("Can not decrement a buffer used value");
+			return (BAD);
+		}
 	}
 
-	buf_dec_room(buf, BUF_T_CANARY_SIZE);
+	if (OK != buf_dec_room(buf, BUF_T_CANARY_SIZE)) {
+		DE("Can not decrement a buffer room value\n");
+		return (BAD);
+	}
 	return (buf_set_canary(buf));
 }
 
@@ -444,20 +450,33 @@ int buf_is_circ(buf_t *buf)
 	}
 
 	/* TODO: in case of CIRC buffer it is wrong */
-	buf_set_room(buf, size);
-	buf_set_used(buf, 0);
+	if(OK != buf_set_room(buf, size)) {
+		DE("Can not set a new 'room' value\n");
+		free(buf);
+		return (NULL);
+	}
+
+	if(OK != buf_set_used(buf, 0)) {
+		DE("Can not set a new 'used' value\n");
+		free(buf);
+		return (NULL);
+	}
 
 	/* Set CANARY word */
 	if (size > 0 && IS_BUF_CANARY(buf) && OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY word\n");
-		buf_free(buf);
+		if(OK != buf_free(buf)) {
+			DE("Can't free the buffer\n");
+		}
 		TRY_ABORT();
 		return (NULL);
 	}
 
 	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid right after allocation!\n");
-		buf_free(buf);
+		if(OK != buf_free(buf)) {
+			DE("Can not free the buffer\n");
+		}
 		TRY_ABORT();
 		return (NULL);
 	}
@@ -478,13 +497,23 @@ ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t
 	}
 
 	buf->data = data;
-	buf_set_room(buf, size);
-	buf_set_used(buf, len);
+	if(OK != buf_set_room(buf, size)) {
+		DE("Can not set a new value to the buffer\n");
+		return (BAD);
+	}
+
+	if(OK != buf_set_used(buf, len)) {
+		DE("Can not set a new 'used' value to the buffer\n");
+		return (BAD);
+	}
 
 	/* If external data set we clean CANRY flag */
 	/* TODO: Don't do it. Just realloc the buffer to set CANARY in the end */
 	/* TODO: Also flag STATIC should be tested */
-	buf_unmark_canary(buf);
+	if(OK != buf_unmark_canary(buf)) {
+		DE("Can not unset canary flag\n");
+		return(BAD);
+	}
 
 	return (OK);
 }
@@ -506,8 +535,15 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
 		return (rc);
 	}
 
-	buf_unmark_canary(buf);
-	buf_mark_ro(buf);
+	if(OK!= buf_unmark_canary(buf)) {
+		DE("Can not unset CANARY flag\n");
+		return (BAD);
+	}
+
+	if(OK != buf_mark_ro(buf)) {
+		DE("Can not set RO flag\n");
+		return (BAD);
+	}
 	return (OK);
 }
 
@@ -517,9 +553,15 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
 	TESTP(buf, NULL);
 	data = buf->data;
 	buf->data = NULL;
-	buf_set_room(buf, 0);
-	buf_set_used(buf, 0);
+	if(OK != buf_set_room(buf, 0)) {
+		DE("Can not set a new value to the buffer\n");
+		return (data);
+	}
 
+	if(OK != buf_set_used(buf, 0)) {
+		DE("Can not set a new 'used' value to the buffer\n");
+		return (data);
+	}
 	/* TODO: If CANARY used - zero it, dont reallocate the buffer */
 	return (data);
 }
@@ -582,7 +624,10 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
 	/* Case 3: realloc succidded, the same pointer - we do nothing */
 	/* <Beeep> */
 
-	buf_inc_room(buf, size);
+	if(OK != buf_inc_room(buf, size)) {
+		DE("Can not increment 'room' value\n");
+		return (BAD);
+	}
 
 	/* If the buffer use canary add it to the end */
 
@@ -637,8 +682,16 @@ ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf)
 		memset(buf->data, 0, buf_room(buf));
 		free(buf->data);
 	}
-	buf_set_room(buf, 0);
-	buf_set_used(buf, 0);
+	if( OK != buf_set_room(buf, 0)) {
+		DE("Can not set a new value to the buffer\n");
+		return (BAD);
+	}
+
+	if(OK != buf_set_used(buf, 0)) {
+		DE("Can not set a new 'used' value to the buffer\n");
+		return (BAD);
+	}
+
 	buf->flags = 0;
 
 	return (OK);
@@ -797,7 +850,10 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 		buf->data = tmp;
 	}
 
-	buf_set_room(buf, buf_used(buf));
+	if(OK != buf_set_room(buf, buf_used(buf))) {
+		DE("Can not set a new room value to the buffer\n");
+		return (BAD);
+	}
 
 	if (IS_BUF_CANARY(buf)) {
 		buf_set_canary(buf);

@@ -323,7 +323,7 @@ extern buf_t_flags_t bug_get_abort_flag(void);
  * @brief set "abort on errors" state
  * @param void
  */
-extern void buf_set_abort(void);
+extern void buf_set_abort_flag(void);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -331,7 +331,7 @@ extern void buf_set_abort(void);
  * @brief Unset "abort on errors" state
  * @param void
  */
-extern void buf_unset_abort(void);
+extern void buf_unset_abort_flag(void);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
