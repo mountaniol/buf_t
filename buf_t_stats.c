@@ -60,7 +60,7 @@ void buf_ro_num_inc()
 void max_data_size_upd(size_t data_size)
 {
 	if (max_data_size < data_size) {
-		max_data_size = max_data_size;
+		max_data_size = data_size;
 	}
 }
 

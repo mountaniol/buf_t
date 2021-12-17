@@ -8,19 +8,22 @@
 #include <stddef.h>
 
 #include "buf_t.h"
+#include "buf_t_string.h"
+
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
 
 /* Abort on error */
-static char          g_abort_on_err = 0;
+static buf_t_flags_t g_abort_on_err = 0;
+
+buf_t_flags_t bug_get_abort_flag()
+{
+	return g_abort_on_err;
+}
 
 /* Flags: set on every new buffer */
 static buf_t_flags_t g_flags;
-
-/** If there is 'abort on error' is set, this macro stops
- *  execution and generates core file */
-#define TRY_ABORT() do{ if(g_abort_on_err) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
 
 buf_t_flags_t buf_save_flags(void)
 {
@@ -31,7 +34,6 @@ void buf_restore_flags(buf_t_flags_t flags)
 {
 	g_flags = flags;
 }
-
 
 void buf_set_abort(void)
 {
@@ -292,6 +294,8 @@ buf_t_canary_t buf_get_canary(buf_t *buf)
 void buf_print_flags(buf_t *buf)
 {
 	if (IS_BUF_STRING(buf)) DDD("Buffer is STRING\n");
+	if (IS_BUF_BIT(buf)) DDD("Buffer is BIT\n");
+	if (IS_BUF_CIRC(buf)) DDD("Buffer is CIRC\n");
 	if (IS_BUF_RO(buf)) DDD("Buffer is READONLY\n");
 	if (IS_BUF_COMPRESSED(buf)) DDD("Buffer is COMPRESSED\n");
 	if (IS_BUF_ENCRYPTED(buf)) DDD("Buffer is ENCRYPTED\n");
@@ -299,9 +303,9 @@ void buf_print_flags(buf_t *buf)
 	if (IS_BUF_CRC(buf)) DDD("Buffer is CRC\n");
 }
 
-/* TODO: SPlit this funtion into set of function per type */
+/* TODO: Split this funtion into set of function per type */
 /* Validate sanity of buf_t */
-ret_t buf_is_valid(buf_t *buf)
+static ret_t buf_common_is_valid(buf_t *buf)
 {
 	if (NULL == buf) {
 		DE("Invalid: got NULL pointer\n");
@@ -332,22 +336,6 @@ ret_t buf_is_valid(buf_t *buf)
 		return (ECANCELED);
 	}
 
-	/* If the buf is string than room must be > used */
-	if (IS_BUF_STRING(buf) && (NULL != buf->data) && (buf_room(buf) <= buf_used(buf))) {
-		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_used(buf), buf_room(buf));
-		TRY_ABORT();
-		return (ECANCELED);
-	}
-
-	/* For string buffers only: check that the string is null terminated */
-	/* If the 'used' area not '\0' terminated - invalid */
-	if (IS_BUF_STRING(buf) && (NULL != buf->data) && ('\0' != *(buf->data + buf_used(buf)))) {
-		DE("Invalid STRING buf: no '0' terminated\n");
-		DE("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_used(buf), buf_room(buf), *(buf->data + buf_used(buf)), buf->data);
-		TRY_ABORT();
-		return (ECANCELED);
-	}
-
 	if (buf_room(buf) > 0 && IS_BUF_CANARY(buf) && (OK != buf_test_canary(buf))) {
 		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_room(buf);
 		DE("The buffer was overwritten: canary word is wrong\n");
@@ -366,6 +354,33 @@ ret_t buf_is_valid(buf_t *buf)
 	DDD0("Buffer is valid\n");
 	//buf_print_flags(buf);
 	return (OK);
+}
+
+ret_t buf_is_valid(buf_t *buf)
+{
+	ret_t ret;
+	ret = buf_common_is_valid(buf);
+	if (OK != ret) {
+		DE("Buffer is invalud - returning/aborting");
+		TRY_ABORT();
+		return ret;
+	}
+
+	switch (BUF_TYPE(buf)) {
+	case BUF_T_RAW:
+		/* For RAW buffer no additional test needed */
+		return OK;
+		break;
+	case BUF_T_STRING:
+		return buf_str_is_valid(buf);
+		break;
+	default:
+		DE("Unknown buffer type: %d\n", BUF_TYPE(buf));
+		TRY_ABORT();
+		return BAD;
+	}
+
+	return OK;
 }
 
 int buf_is_string(buf_t *buf)

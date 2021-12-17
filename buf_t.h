@@ -212,6 +212,10 @@ typedef struct buf_t_struct buf_t;
 #define BUF_T_TYPE_MASK  0x07
 
 /** Types **/
+/* This is just a regular buffer, keeping user's raw data.
+   User knows what to do with it, we don't care */
+#define BUF_T_RAW        	0
+
 /* String buffer. In this case, additional tests enabled */
 #define BUF_T_STRING        1
 
@@ -240,9 +244,10 @@ typedef struct buf_t_struct buf_t;
 /* Buffer is crc32 protected */
 #define BUF_T_CRC  (1 << (BUF_T_TYPE_WIDTH + 4))
 
-#define IS_BUF_STRING(buf) ( (buf->flags & BUF_T_TYPE_MASK) == BUF_T_STRING )
-#define IS_BUF_BIT(buf) ( (buf->flags & BUF_T_TYPE_MASK) == BUF_T_BIT )
-#define IS_BUF_CIRC(buf) ( (buf->flags & BUF_T_TYPE_MASK) == BUF_T_CIRC )
+#define BUF_TYPE(buf) (buf->flags & BUF_T_TYPE_MASK)
+#define IS_BUF_STRING(buf) ( BUF_TYPE(buf) == BUF_T_STRING )
+#define IS_BUF_BIT(buf) ( BUF_TYPE(buf) == BUF_T_BIT )
+#define IS_BUF_CIRC(buf) ( BUF_TYPE(buf) == BUF_T_CIRC )
 #define IS_BUF_RO(buf) (buf->flags & BUF_T_READONLY)
 #define IS_BUF_COMPRESSED(buf) (buf->flags & BUF_T_COMPRESSED)
 #define IS_BUF_ENCRYPTED(buf) (buf->flags & BUF_T_ENCRYPTED)
@@ -289,6 +294,26 @@ typedef uint8_t buf_t_canary_t;
 
 /* How much bytes will be transmitted to send buf_t + its actual data */
 #define BUF_T_NET_SEND_SIZE(b) (BUF_T_STRUCT_NET_SIZE + b->used)
+
+
+/**
+ * @author Sebastian Mountaniol (12/17/21)
+ * buf_t_flags_t bug_get_abort_flag(void)
+ * 
+ * @brief Get the status of global "abort" flag. If this flag is
+ *  	  set, the buf_t will abort on errors and generate a
+ *  	  core file
+ * @param void  
+ * 
+ * @return buf_t_flags_t Status of 'abort' flag. 0 means it is
+ *  	   not ebabled.
+ * @details 
+ */
+extern buf_t_flags_t bug_get_abort_flag(void);
+
+/** If there is 'abort on error' is set, this macro stops
+ *  execution and generates core file */
+#define TRY_ABORT() do{ if(bug_get_abort_flag()) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
