@@ -121,6 +121,10 @@ typedef enum {
 #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
 #define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
 
+/* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
+extern int bug_get_abort_flag(void);
+#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+
 #ifdef TFREE_SIZE
 	#undef TFREE_SIZE
 #endif
@@ -311,7 +315,7 @@ typedef uint8_t buf_t_checksum_t;
  *  	   not ebabled.
  * @details 
  */
-extern buf_t_flags_t bug_get_abort_flag(void);
+extern int bug_get_abort_flag(void);
 
 /** If there is 'abort on error' is set, this macro stops
  *  execution and generates core file */
@@ -351,7 +355,8 @@ extern void buf_default_flags(buf_t_flags_t f);
  * @param size_t size Size of the new 'data'
  * @param size_t len Length of data in the buffer, user must provide it
  * @return err_t Returns EOK on success
- * 	Return EACCESS if the buffer is read-only
+ *  Return -EACCESS if the buffer is read-only
+ *  Return -EINVAL if buffer or data is NULL
  */
 extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t size, const buf_usize_t len);
 
@@ -384,8 +389,8 @@ extern /*@null@*/ buf_t *buf_new(buf_usize_t size);
  * @param char * data Data the buf_t will contain. It is legal if this parameter == NULL
  * @param size_t size Size of the buffer. If data == NULL this argument must be 0
  * @return err_t EOK on success
- * 	Returns ECANCELED if data == NULL but size > 0
- * 	Returns EACCESS if this buffer already marked as read-only.
+ * 	Returns -ECANCELED if data == NULL but size > 0
+ * 	Returns -EACCESS if this buffer already marked as read-only.
  */
 extern ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size);
 
@@ -434,10 +439,11 @@ extern ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
  * @param buf_t * buf Buffer to grow
  * @param size_t size How many byte to add
  * @return int EOK on success
- * 	EINVAL if buf == NULL
- * 	EACCESS if buf is read-only
- * 	ENOMEM if allocation of additional space failed. In this case the buffer kept untouched.
- * 	ENOKEY if the buffer marked as CAANRY but CANARY work can't be added.
+ * 	-EINVAL if buf == NULL
+ * 	-EACCESS if buf is read-only
+ *  -ENOMEM if allocation of additional space failed. In this
+ *  case the buffer kept untouched. -ENOKEY if the buffer marked
+ *  as CAANRY but CANARY work can't be added.
  */
 extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size);
 
@@ -636,7 +642,7 @@ extern void buf_restore_flags(buf_t_flags_t flags);
  * @func err_t buf_mark_string(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing string buffer
  * data @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, EINVAL if buf is NULL
+ * @return err_t EOK on success, -EINVAL if buf is NULL
  */
 extern ret_t buf_mark_string(buf_t *buf);
 
@@ -648,7 +654,7 @@ extern ret_t buf_mark_string(buf_t *buf);
  * @param buf - Buffer to set flags
  * @param f - Flag(s) to set
  *
- * @return ret_t OK on success, EINVAL if NULL pointer received
+ * @return ret_t OK on success, -EINVAL if NULL pointer received
  * @details 
  */
 extern ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f);
@@ -670,7 +676,7 @@ extern ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f);
  * @func err_t buf_mark_ro(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing read-only data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, EINVAL if buf is NULL
+ * @return err_t EOK on success, -EINVAL if buf is NULL
  */
 extern ret_t buf_mark_ro(buf_t *buf);
 
@@ -785,8 +791,8 @@ extern ret_t buf_set_canary(buf_t *buf);
  * @brief Set CAANRY mark in the end of the buffer and apply ANARY flag on the buffer
  * @param buf_t * buf Buffer to set CANARY
  * @return err_t EOK on success,
- * 	EINVAL if buf is NULL,
- * 	ECANCELED if the buffer is too small to set CANARY mark,
+ * 	-EINVAL if buf is NULL,
+ * 	-ECANCELED if the buffer is too small to set CANARY mark,
  * 	or one of the but_set_canary() function errors
  * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer
  *    will be replaced with CANARY mark. You must reserve the last byte for it.
@@ -799,8 +805,8 @@ extern ret_t buf_force_canary(buf_t *buf);
  * @brief Check that CANARY mark is untouched
  * @param buf_t * buf Buffer to check
  * @return err_t EOK if CANARY word is untouched,
- * 	EINVAL if the buf is NULL,
- * 	ECANCELED if buf is not marked as a CANARY buffer,
+ * 	-EINVAL if the buf is NULL,
+ * 	-ECANCELED if buf is not marked as a CANARY buffer,
  * 	EBAD if canary mark is invalid
  */
 extern ret_t buf_test_canary(buf_t *buf);
@@ -829,7 +835,7 @@ extern void buf_print_flags(buf_t *buf);
  * @brief Test if the buffer is a string buffer
  * @param buf_t * buf Buffer to check
  * @return int EOK if the buf a string buffer
- * 	Returns EINVAL if buf is NULL
+ * 	Returns -EINVAL if buf is NULL
  * 	Returns 1 if not
  */
 extern int buf_is_string(buf_t *buf);
@@ -841,8 +847,8 @@ extern int buf_is_string(buf_t *buf);
  * @brief Test if the buffer is a bit buffer
  * @param buf - Buffer to test
  * 
- * @return int OK if it is a bit buffer, not OK if it is not a
- *  	   bit buffer
+ * @return int OK if it is a bit buffer, -EINVAL if the buffer
+ *  	   is NULL, 1 if the buffer is not a bit buffer
  * @details 
  */
 extern int buf_is_bit(buf_t *buf);
@@ -854,8 +860,8 @@ extern int buf_is_bit(buf_t *buf);
  * @brief Test if the buffer is a circular buffer
  * @param buf - Buffer to test
  * 
- * @return int - OK  if the buffer is a circular buffer, not OK
- *  	   otherwise
+ * @return int - OK  if the buffer is a circular buffer, 1 if
+ *  	   not, -EINVAL if the buffer id NULL pointer
  * @details 
  */
 extern int buf_is_circ(buf_t *buf);
@@ -873,7 +879,8 @@ extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
- * @func ssize_t buf_recv(buf_t *buf, const int socket, const size_t expected, const int flags)
+ * @func size_t buf_recv(buf_t *buf, const int socket, const
+ *  	 size_t expected, const int flags)
  * @brief Receive from socket into buffer
  * @param buf_t * buf Buffer to save received data
  * @param const int socket Opened socket
@@ -882,7 +889,7 @@ extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
  * @return ssize_t Number of received bytes
  * 	EINVAL if buf is NULL, else returns status of recv() function
  */
-extern ssize_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags);
+extern size_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags);
 
 /* Additional defines */
 #ifdef BUF_DEBUG

@@ -11,6 +11,7 @@
 
 int verbose = 0;
 
+#define PRINT(fmt, ...) do{if(verbose > 0){printf("%s +%d : ", __func__, __LINE__); printf(fmt, ##__VA_ARGS__);} }while(0 == 1)
 #define PSPLITTER()  do{if(verbose > 0)printf("+++++++++++++++++++++++++++++++++++++++++++++++\n\n");} while(0)
 #define PSPLITTER2()  do{if(verbose > 0) printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");} while(0)
 #define PSTART(x)     do{if(verbose > 0) printf("Beginning:   [%s]\n", x);} while(0)
@@ -49,7 +50,10 @@ void test_buf_new_zero_size(void)
 
 	PSTEP("Tested: buf->data == NULL");
 
-	buf_free(buf);
+	if (OK != buf_free(buf)) {
+		PFAIL("Can not free the buffer");
+		abort();
+	}
 	PSTEP("Released buf");
 	PSUCCESS("allocate 0 size buffer");
 }
@@ -69,26 +73,38 @@ void test_buf_new_increasing_size(void)
 		buf = buf_new(size);
 		if (NULL == buf) {
 			PFAIL("increasing size buffer");
+			/*@ignore@*/
 			printf("Tried to allocate: %zu size\n", size);
+			/*@end@*/
 			abort();
 		}
 
 		if (buf_used(buf) != 0 || buf_room(buf) != size) {
+			/*@ignore@*/
 			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_used(buf), buf_room(buf), size);
+			/*@end@*/
 			PFAIL("increasing size buffer");
 			abort();
 		}
 
 		if (NULL == buf->data) {
+			/*@ignore@*/
 			printf("increasing size buffer: data == NULL (%p), asked size: %zu, iteration: %d\n", buf->data, size, i);
+			/*@end@*/
 			PFAIL("increasing size buffer");
 			abort();
 		}
 
-		buf_free(buf);
+		if (OK != buf_free(buf)) {
+			PFAIL("Can not free the buffer");
+			abort();
+		}
 	}
 
-	if (verbose > 1) printf("[Allocated up to %zu bytes buffer]\n", size);
+	/*@ignore@*/
+	PRINT("[Allocated up to %zu bytes buffer]\n", size);
+	/*@end@*/
+
 	PSUCCESS("increasing size buffer");
 }
 
@@ -101,7 +117,10 @@ void test_buf_string(size_t buffer_init_size)
 	PSPLITTER();
 
 	PSTART("buf_string");
-	if (verbose > 1) printf("[Asked string size: %zu]\n", buffer_init_size);
+
+	/*@ignore@*/
+	PRINT("[Asked string size: %zu]\n", buffer_init_size);
+	/*@end@*/
 
 	buf = buf_string(buffer_init_size);
 	if (NULL == buf) {
@@ -129,9 +148,11 @@ void test_buf_string(size_t buffer_init_size)
 #endif
 
 	if (strlen(buf->data) != strlen(str)) {
+		/*@ignore@*/
 		printf("[After buf_add: wrong string len of buf->data]\n");
 		printf("[Added string len = %zu]\n", strlen(str));
 		printf("[buf->data len = %zu]\n", strlen(buf->data));
+		/*@end@*/
 		PFAIL("buf_string");
 		abort();
 	}
@@ -150,28 +171,35 @@ void test_buf_string(size_t buffer_init_size)
 	}
 
 	if (buf_used(buf) != strlen(str) + strlen(str2)) {
+		/*@ignore@*/
 		printf("After buf_add: wrong buf->used\n");
 		printf("Expected: buf->used = %zu\n", strlen(str) + strlen(str2));
 		printf("Current : buf->used = %ld\n", buf_used(buf));
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
+		/*@end@*/
 
 		PFAIL("buf_string");
 		abort();
 	}
 
 	if (strlen(buf->data) != (strlen(str) + strlen(str2))) {
+		/*@ignore@*/
 		printf("[buf->used != added strings]\n");
 		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf->data), strlen(str) + strlen(str2));
 		printf("[String is: |%s|, added strings: |%s%s|]\n", buf->data, str, str2);
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
+		/*@end@*/
 		PFAIL("buf_string");
 		abort();
 	}
 
 	//printf("%s\n", buf->data);
-	buf_free(buf);
+	if (OK != buf_free(buf)) {
+		PFAIL("buf_string: Can not free the buffer");
+		abort();
+	}
 
 	PSUCCESS("buf_string");
 }
@@ -260,14 +288,17 @@ void test_buf_pack_string(void)
 	}
 
 	memset(con_str, 0, len + len2 + 1);
-	sprintf(con_str, "%s%s", str, str2);
+	snprintf(con_str, len + len2 + 1, "%s%s", str, str2);
 
 	if (0 != strcmp(buf->data, con_str)) {
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string: Strings are differ");
 		abort();
 	}
 	//printf("%s\n", buf->data);
-	buf_free(buf);
+	if (OK != buf_free(buf)) {
+		PFAIL("buf_pack_string: Can npt free the buffer");
+		abort();
+	}
 	free(con_str);
 
 	PSUCCESS("buf_pack_string");
@@ -298,7 +329,7 @@ void test_buf_str_concat(void)
 		abort();
 	}
 
-	if(OK != buf_add(buf1, str1, len1)) {
+	if (OK != buf_add(buf1, str1, len1)) {
 		PFAIL("buf_str_concat: Can't add string into buf2");
 		abort();
 	}
@@ -316,7 +347,7 @@ void test_buf_str_concat(void)
 		abort();
 	}
 
-	if(OK != buf_add(buf2, str2, len2)) {
+	if (OK != buf_add(buf2, str2, len2)) {
 		PFAIL("buf_str_concat: Can't add string into buf2");
 		abort();
 	}
@@ -367,7 +398,7 @@ void test_buf_str_concat(void)
 	}
 
 	memset(con_str, 0, len1 + len2 + 1);
-	sprintf(con_str, "%s%s", str1, str2);
+	snprintf(con_str, len1 + len2 + 1, "%s%s", str1, str2);
 
 	if (0 != strcmp(buf1->data, con_str)) {
 		PFAIL("buf_str_concat: string is not the same");
@@ -474,7 +505,10 @@ void test_buf_pack(void)
 	PSTEP("Tested room and used");
 
 	//printf("%s\n", buf->data);
-	buf_free(buf);
+	if (OK != buf_free(buf)) {
+		PFAIL("Can not free the buffer");
+		abort();
+	}
 	free(buf_data);
 
 	PSUCCESS("buf_pack");
@@ -495,6 +529,7 @@ void test_buf_canary(void)
 
 	PSTART("buf_canary");
 
+	/* We need to save and later restore flags: during this test we must unset the 'abort' flags */
 	flags = buf_save_flags();
 	buf_unset_abort_flag();
 
@@ -565,7 +600,7 @@ void test_buf_canary(void)
 		abort();
 	}
 
-	printf("Ignore previous ERR printout; we expected it\n");
+	printf("Ignore the previous ERR printout; we expected it\n");
 
 	PSTEP("The canary is broken. It is what expected to be");
 

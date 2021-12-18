@@ -83,7 +83,9 @@ ret_t buf_str_is_valid(buf_t *buf)
 
 	if (OK != buf_set_flag(buf, BUF_T_STRING)) {
 		DE("Can't set STRING flag\n");
-		buf_free(buf);
+		if(OK != buf_free(buf)) {
+			DE("Can't release a buffer\n");
+		}
 		TRY_ABORT();
 		return (NULL);
 	}
@@ -95,13 +97,21 @@ ret_t buf_str_is_valid(buf_t *buf)
 		buf->data = NULL;
 		if(OK != buf_set_room(buf, 0)) {
 			DE("Can not set a new room value to the buffer\n");
+			TRY_ABORT();
 			return (NULL);
 		}
 		if(OK != buf_set_used(buf, 0)) {
 			DE("Can not set a new 'used' value to the buffer\n");
+			TRY_ABORT();
 			return (NULL);
 		}
-		buf_free(buf);
+
+		if(OK != buf_free(buf)) {
+			DE("Can not free a buffer\n");
+			TRY_ABORT();
+			return (NULL);
+		}
+
 		TRY_ABORT();
 		return (NULL);
 	}
@@ -129,7 +139,10 @@ ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const bu
 
 	/* All done, now add new data into the buffer */
 	memcpy(buf->data + buf_used(buf), new_data, size);
-	buf_inc_used(buf, size);
+	if(OK != buf_inc_used(buf, size)){
+		DE("Can not increase 'used'\n");
+		return (BAD);
+	}
 	BUF_TEST(buf);
 	return (OK);
 }
@@ -277,7 +290,9 @@ buf_t *buf_sprintf(const char *format, ...)
 	if (OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - free and return\n");
 		TRY_ABORT();
-		buf_free(buf);
+		if(OK != buf_free(buf)) {
+			DE("Can not crelease a buffer\n");
+		}
 		return (NULL);
 	}
 

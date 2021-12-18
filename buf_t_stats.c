@@ -96,7 +96,10 @@ void buf_realloc_average_upd(size_t realloced){
 void buf_t_stats_print()
 {
 	printf("Average buf allocation size: %f\n", average_buf_size);
+	/*@ignore@*/
 	printf("Number of buf_t allocations: %zu\n", buf_allocs_num);
 	printf("Number of buf_t releases:    %zu\n", buf_release_num);
+	/*@end@*/
+
 	//printf("Number of buf_t releases:    %zu\n", buf_release_num);
 }
