@@ -10,7 +10,7 @@ extern ret_t buf_str_is_valid(buf_t *buf);
  * @param size_t size
  * @return buf_t*
  */
-extern /*@null@*/ buf_t *buf_string(buf_usize_t size);
+extern /*@null@*/ buf_t *buf_string(buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -20,7 +20,7 @@ extern /*@null@*/ buf_t *buf_string(buf_usize_t size);
  * @param size_t size_without_0 Length of the string without terminating '\0'
  * @return buf_t* New buf_t containing the "str"
  */
-extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_usize_t size_without_0);
+extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_s64_t size_without_0);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -34,7 +34,7 @@ extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_usize_t 
  * @return ret_t 
  * @details 
  */
-extern ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_usize_t size);
+extern ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)

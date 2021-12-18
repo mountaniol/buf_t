@@ -61,9 +61,9 @@ void test_buf_new_zero_size(void)
 /* Create buffers with increasing size */
 void test_buf_new_increasing_size(void)
 {
-	buf_t  *buf = NULL;
-	size_t size = 64;
-	int    i;
+	buf_t     *buf = NULL;
+	buf_s64_t size = 64;
+	int       i;
 	PSPLITTER();
 
 	PSTART("increasing size buffer");
@@ -170,7 +170,7 @@ void test_buf_string(size_t buffer_init_size)
 		abort();
 	}
 
-	if (buf_used(buf) != strlen(str) + strlen(str2)) {
+	if (buf_used(buf) != (buf_s64_t)strlen(str) + (buf_s64_t)strlen(str2)) {
 		/*@ignore@*/
 		printf("After buf_add: wrong buf->used\n");
 		printf("Expected: buf->used = %zu\n", strlen(str) + strlen(str2));
@@ -212,8 +212,8 @@ void test_buf_pack_string(void)
 	const char *str     = "Jabala Labala Hoom";
 	const char *str2    = " Lalala";
 	char       *con_str = NULL;
-	size_t     len;
-	size_t     len2;
+	buf_s64_t  len;
+	buf_s64_t  len2;
 
 	PSPLITTER();
 
@@ -256,7 +256,7 @@ void test_buf_pack_string(void)
 		abort();
 	}
 
-	if (strlen(buf->data) != (len + len2)) {
+	if ((buf_s64_t)strlen(buf->data) != (len + len2)) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -313,8 +313,8 @@ void test_buf_str_concat(void)
 	const char *str1    = "Jabala Labala Hoom";
 	const char *str2    = " Lalala";
 	char       *con_str = NULL;
-	size_t     len1;
-	size_t     len2;
+	buf_s64_t  len1;
+	buf_s64_t  len2;
 
 	len1 = strlen(str1);
 	len2 = strlen(str2);
@@ -366,7 +366,7 @@ void test_buf_str_concat(void)
 
 	PSTEP("buf_str_concat OK");
 
-	if (strlen(buf1->data) != (len1 + len2)) {
+	if ((buf_s64_t)strlen(buf1->data) != (len1 + len2)) {
 		PFAIL("buf_str_concat: bad length");
 		abort();
 	}
@@ -424,11 +424,11 @@ void test_buf_str_concat(void)
 
 void test_buf_pack(void)
 {
-	buf_t  *buf          = NULL;
-	char   *buf_data     = NULL;
-	size_t buf_data_size = 256;
-	size_t i;
-	time_t current_time  = time(0);
+	buf_t     *buf          = NULL;
+	char      *buf_data     = NULL;
+	buf_s64_t buf_data_size = 256;
+	buf_s64_t i;
+	time_t    current_time  = time(0);
 	srandom((unsigned int)current_time);
 
 	PSPLITTER();
@@ -518,8 +518,8 @@ void test_buf_canary(void)
 {
 	buf_t         *buf          = NULL;
 	char          *buf_data     = NULL;
-	size_t        buf_data_size = 256;
-	size_t        i;
+	buf_s64_t     buf_data_size = 256;
+	buf_s64_t     i;
 	time_t        current_time  = time(0);
 	buf_t_flags_t flags;
 

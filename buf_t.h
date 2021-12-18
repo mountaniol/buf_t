@@ -163,7 +163,8 @@ typedef uint8_t buf_t_flags_t;
  * 
  */
 
-typedef uint64_t buf_usize_t;
+typedef int64_t buf_s64_t;
+//typedef int64_t  buf_ssize_t;
 typedef uint32_t buf_circ_usize_t;
 
 typedef struct head_tail_struct {
@@ -175,9 +176,9 @@ typedef struct head_tail_struct {
 
 #ifdef BUF_DEBUG
 struct buf_t_struct {
-	buf_usize_t room;           /* Allocated size */
+	buf_s64_t room;           /* Allocated size */
 	union {
-		buf_usize_t used;           /* Used size */
+		buf_s64_t used;           /* Used size */
 		head_tail_t ht;             /* Head and tail of circular buffer */
 	};
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
@@ -194,9 +195,9 @@ struct buf_t_struct {
 #else /* Not debug */
 /* Simple struct to hold a buffer / string and its size / lenght */
 struct buf_t_struct {
-	buf_usize_t room;           /* Allocated size */
+	buf_s64_t room;           /* Allocated size */
 	union {
-		buf_usize_t used;           /* Used size */
+		buf_s64_t used;           /* Used size */
 		head_tail_t ht;             /* Head and tail of circular buffer */
 	};
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
@@ -358,7 +359,7 @@ extern void buf_default_flags(buf_t_flags_t f);
  *  Return -EACCESS if the buffer is read-only
  *  Return -EINVAL if buffer or data is NULL
  */
-extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t size, const buf_usize_t len);
+extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_s64_t size, const buf_s64_t len);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
@@ -379,7 +380,7 @@ extern ret_t buf_is_valid(buf_t *buf);
  * @param size_t size Data buffer size, may be 0
  * @return buf_t* New buf_t structure.
  */
-extern /*@null@*/ buf_t *buf_new(buf_usize_t size);
+extern /*@null@*/ buf_t *buf_new(buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -392,7 +393,7 @@ extern /*@null@*/ buf_t *buf_new(buf_usize_t size);
  * 	Returns -ECANCELED if data == NULL but size > 0
  * 	Returns -EACCESS if this buffer already marked as read-only.
  */
-extern ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size);
+extern ret_t buf_set_data_ro(buf_t *buf, char *data, buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -445,7 +446,7 @@ extern ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
  *  case the buffer kept untouched. -ENOKEY if the buffer marked
  *  as CAANRY but CANARY work can't be added.
  */
-extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size);
+extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_s64_t size);
 
 /**
  * @func int buf_test_room(buf_t *buf, size_t expect)
@@ -460,7 +461,7 @@ extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size);
  * 	EINVAL if buf is NULL or 'expected' == 0
  * 	Also can return all error statuses of buf_add_room()
  */
-extern ret_t buf_test_room(/*@null@*/buf_t *buf, buf_usize_t expect);
+extern ret_t buf_test_room(/*@null@*/buf_t *buf, buf_s64_t expect);
 
 /**
  * @func int buf_t_free_force(buf_t *buf)
@@ -487,7 +488,7 @@ extern ret_t buf_free(/*@only@*//*@null@*/buf_t *buf);
  * 	EACCESS if the 'buf' is read-only
  * 	ENOMEM if new memory can't be allocated
  */
-extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_usize_t size);
+extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -497,7 +498,7 @@ extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const
  * @return ssize_t Number of bytes used on success
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_usize_t buf_used(/*@null@*/buf_t *buf);
+extern buf_s64_t buf_used(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -510,7 +511,7 @@ extern buf_usize_t buf_used(/*@null@*/buf_t *buf);
  * @return ret_t 
  * @details 
  */
-extern ret_t buf_set_used(buf_t *buf, buf_usize_t used);
+extern ret_t buf_set_used(buf_t *buf, buf_s64_t used);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -524,7 +525,7 @@ extern ret_t buf_set_used(buf_t *buf, buf_usize_t used);
  * @return ret_t OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_inc_used(buf_t *buf, buf_usize_t used);
+extern ret_t buf_inc_used(buf_t *buf, buf_s64_t used);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -538,7 +539,7 @@ extern ret_t buf_inc_used(buf_t *buf, buf_usize_t used);
  * @return ret_t OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_dec_used(buf_t *buf, buf_usize_t dec);
+extern ret_t buf_dec_used(buf_t *buf, buf_s64_t dec);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -548,7 +549,7 @@ extern ret_t buf_dec_used(buf_t *buf, buf_usize_t dec);
  * @return ssize_t How many bytes allocated for this 'buf'
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_usize_t buf_room(/*@null@*/buf_t *buf);
+extern buf_s64_t buf_room(/*@null@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -561,7 +562,7 @@ extern buf_usize_t buf_room(/*@null@*/buf_t *buf);
  * @return ret_t OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_set_room(/*@null@*/buf_t *buf, buf_usize_t room);
+extern ret_t buf_set_room(/*@null@*/buf_t *buf, buf_s64_t room);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -574,7 +575,7 @@ extern ret_t buf_set_room(/*@null@*/buf_t *buf, buf_usize_t room);
  * @return ret_t OK on sucess, BAD on an error
  * @details 
  */
-extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_usize_t inc);
+extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_s64_t inc);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -588,7 +589,7 @@ extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_usize_t inc);
  * @details The 'dec' must be less or equal to the buf->room,
  *  		else BAD error returned and no value decremented
  */
-extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_usize_t dec);
+extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_s64_t dec);
 /**
  * @author Sebastian Mountaniol (01/06/2020)
  * @func err_t buf_pack(buf_t *buf)
@@ -889,7 +890,7 @@ extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
  * @return ssize_t Number of received bytes
  * 	EINVAL if buf is NULL, else returns status of recv() function
  */
-extern size_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags);
+extern size_t buf_recv(buf_t *buf, const int socket, const buf_s64_t expected, const int flags);
 
 /* Additional defines */
 #ifdef BUF_DEBUG

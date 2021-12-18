@@ -181,7 +181,7 @@ ret_t buf_set_canary(buf_t *buf)
 	return (OK);
 }
 
-buf_usize_t buf_used(buf_t *buf)
+buf_s64_t buf_used(buf_t *buf)
 {
 	T_RET_ABORT(buf, -EINVAL);
 
@@ -197,7 +197,7 @@ buf_usize_t buf_used(buf_t *buf)
 	return (buf->used);
 }
 
-ret_t buf_set_used(buf_t *buf, buf_usize_t used)
+ret_t buf_set_used(buf_t *buf, buf_s64_t used)
 {
 	T_RET_ABORT(buf, -EINVAL);
 
@@ -211,7 +211,7 @@ ret_t buf_set_used(buf_t *buf, buf_usize_t used)
 	return OK;
 }
 
-ret_t buf_inc_used(buf_t *buf, buf_usize_t inc)
+ret_t buf_inc_used(buf_t *buf, buf_s64_t inc)
 {
 	T_RET_ABORT(buf, -EINVAL);
 
@@ -224,7 +224,7 @@ ret_t buf_inc_used(buf_t *buf, buf_usize_t inc)
 	return OK;
 }
 
-ret_t buf_dec_used(buf_t *buf, buf_usize_t dec)
+ret_t buf_dec_used(buf_t *buf, buf_s64_t dec)
 {
 	T_RET_ABORT(buf, -EINVAL);
 
@@ -256,7 +256,7 @@ ret_t buf_force_canary(buf_t *buf)
 {
 	T_RET_ABORT(buf, -EINVAL);
 
-	if (buf_used(buf) < BUF_T_CANARY_SIZE) {
+	if (buf_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
 		DE("Buffer is to small for CANARY word\n");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -426,7 +426,7 @@ int buf_is_circ(buf_t *buf)
 	return (1);
 }
 
-/*@null@*/ buf_t *buf_new(buf_usize_t size)
+/*@null@*/ buf_t *buf_new(buf_s64_t size)
 {
 	/*@temp@*/buf_t *buf;
 
@@ -492,7 +492,7 @@ int buf_is_circ(buf_t *buf)
 	return (buf);
 }
 
-ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t size, const buf_usize_t len)
+ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_s64_t size, const buf_s64_t len)
 {
 	T_RET_ABORT(buf, -EINVAL);
 	T_RET_ABORT(data, -EINVAL);
@@ -527,7 +527,7 @@ ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_usize_t
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
-ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
+ret_t buf_set_data_ro(buf_t *buf, char *data, buf_s64_t size)
 {
 	int rc;
 	T_RET_ABORT(buf, -EINVAL);
@@ -586,7 +586,7 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, buf_usize_t size)
 	return (data);
 }
 
-ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
+ret_t buf_add_room(/*@null@*/buf_t *buf, buf_s64_t size)
 {
 	void   *tmp   = NULL;
 	size_t canary = 0;
@@ -651,7 +651,7 @@ ret_t buf_add_room(/*@null@*/buf_t *buf, buf_usize_t size)
 	return (OK);
 }
 
-ret_t buf_test_room(/*@null@*/buf_t *buf, buf_usize_t expect)
+ret_t buf_test_room(/*@null@*/buf_t *buf, buf_s64_t expect)
 {
 	T_RET_ABORT(buf, -EINVAL);
 
@@ -730,7 +730,7 @@ ret_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	return (OK);
 }
 
-ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_usize_t size)
+ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size)
 {
 	size_t new_size;
 	TESTP_ASSERT(buf, "buf is NULL");
@@ -774,14 +774,14 @@ ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_us
 	return (OK);
 }
 
-buf_usize_t buf_room(/*@null@*/buf_t *buf)
+buf_s64_t buf_room(/*@null@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -EINVAL);
 	return (buf->room);
 }
 
-ret_t buf_set_room(/*@null@*/buf_t *buf, buf_usize_t room)
+ret_t buf_set_room(/*@null@*/buf_t *buf, buf_s64_t room)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -EINVAL);
@@ -789,7 +789,7 @@ ret_t buf_set_room(/*@null@*/buf_t *buf, buf_usize_t room)
 	return OK;
 }
 
-ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_usize_t inc)
+ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_s64_t inc)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -EINVAL);
@@ -797,7 +797,7 @@ ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_usize_t inc)
 	return (OK);
 }
 
-ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_usize_t dec)
+ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_s64_t dec)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -EINVAL);
@@ -938,7 +938,7 @@ buf_t *buf_extract_field(buf_t *buf, const char *delims, const char *skip, size_
 #endif
 
 /* Receive from socket; add to the end of the buf; return number of received bytes */
-size_t buf_recv(buf_t *buf, const int socket, const buf_usize_t expected, const int flags)
+size_t buf_recv(buf_t *buf, const int socket, const buf_s64_t expected, const int flags)
 {
 	int     rc       = BAD;
 	ssize_t received = -1;

@@ -11,7 +11,6 @@
 	return (ret);
 }
 
-
 /*@null@*/ /*@only@*/void *zmalloc_any(size_t asked, size_t *allocated)
 {
 	/*@shared@*/void *ret = NULL;

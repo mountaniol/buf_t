@@ -47,7 +47,7 @@ ret_t buf_str_is_valid(buf_t *buf)
 	return (OK);
 }
 
-/*@null@*/ buf_t *buf_string(buf_usize_t size)
+/*@null@*/ buf_t *buf_string(buf_s64_t size)
 {
 	buf_t *buf = NULL;
 	buf = buf_new(size);
@@ -65,7 +65,7 @@ ret_t buf_str_is_valid(buf_t *buf)
 	return (buf);
 }
 
-/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_usize_t size_without_0)
+/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_s64_t size_without_0)
 {
 	buf_t *buf = NULL;
 	/* The string must be not NULL */
@@ -119,7 +119,7 @@ ret_t buf_str_is_valid(buf_t *buf)
 	return (buf);
 }
 
-ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_usize_t size)
+ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size)
 {
 	size_t new_size;
 
@@ -149,7 +149,7 @@ ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const bu
 
 ret_t buf_str_detect_used(/*@null@*/buf_t *buf)
 {
-	buf_usize_t calculated_used_size;
+	buf_s64_t calculated_used_size;
 	TESTP(buf, EINVAL);
 
 	/* If the buf is empty - return with error */
