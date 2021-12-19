@@ -586,6 +586,24 @@ ret_t buf_set_data_ro(buf_t *buf, char *data, buf_s64_t size)
 	return (data);
 }
 
+/* TODO: add an 'err' aviable, this function can return NULL if there no data, but also returns NULL on an error */
+void *buf_data(/*@temp@*/buf_t *buf)
+{
+	/* If buf is invalid we return '-1' costed into uint */
+	T_RET_ABORT(buf, NULL);
+	return (buf->data);
+}
+
+ret_t buf_data_is_null(/*@temp@*/buf_t *buf)
+{
+	/* If buf is invalid we return '-1' costed into uint */
+	T_RET_ABORT(buf, -EINVAL);
+	if (NULL == buf->data) {
+		return YES;
+	}
+	return NO;
+}
+
 ret_t buf_add_room(/*@null@*/buf_t *buf, buf_s64_t size)
 {
 	void   *tmp   = NULL;
@@ -735,7 +753,7 @@ ret_t buf_free(/*@only@*//*@null@*/buf_t *buf)
  * new_data can not be NULL 				  *
  *
 	*/
-ret_t buf_add(/*@temp@*/ buf_t *buf, /*@temp@*/const char *new_data, const buf_s64_t size)
+ret_t buf_add(/*@temp@*/buf_t *buf, /*@temp@*/const char *new_data, const buf_s64_t size)
 {
 	size_t new_size;
 	TESTP_ASSERT(buf, "buf is NULL");
@@ -779,7 +797,7 @@ ret_t buf_add(/*@temp@*/ buf_t *buf, /*@temp@*/const char *new_data, const buf_s
 	return (OK);
 }
 
-buf_s64_t buf_room(/*@null@*/buf_t *buf)
+buf_s64_t buf_room(/*@temp@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -EINVAL);
@@ -847,12 +865,12 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 	}
 
 	/* Here we shrink the buffer */
-
 	new_size = buf_used(buf);
 	if (IS_BUF_CANARY(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
 	}
 
+	/*@ignore@*/
 	tmp = realloc(buf->data, new_size);
 
 	/* Case 1: realloc can't reallocate */
@@ -866,6 +884,7 @@ ret_t buf_pack(/*@null@*/buf_t *buf)
 	if (NULL != tmp) {
 		buf->data = tmp;
 	}
+	/*@end@*/
 
 	if (OK != buf_set_room(buf, buf_used(buf))) {
 		DE("Can not set a new room value to the buffer\n");
@@ -902,10 +921,8 @@ ret_t buf_detect_used(/*@null@*/buf_t *buf)
 	switch (BUF_TYPE(buf)) {
 	case BUF_T_STRING:
 		return buf_str_detect_used(buf);
-		break;
 	default:
 		DE("Not supported buf type %d\n", BUF_TYPE(buf));
-		return BAD;
 	}
 
 	/* We should not get here */

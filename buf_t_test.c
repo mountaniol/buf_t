@@ -42,8 +42,9 @@ void test_buf_new_zero_size(void)
 
 	PSTEP("Tested: buf->used == 0 and buf->room == 0");
 
-	if (buf->data != NULL) {
-		printf("0 size buffer: data != NULL (%p)\n", buf->data);
+	//if (buf->data != NULL) {
+	if (buf_data_is_null(buf) == NO) {
+		printf("0 size buffer: data != NULL (%p)\n", buf_data(buf));
 		PFAIL("0 size buffer");
 		abort();
 	}
@@ -61,9 +62,9 @@ void test_buf_new_zero_size(void)
 /* Create buffers with increasing size */
 void test_buf_new_increasing_size(void)
 {
-	buf_t     *buf = NULL;
+	buf_t    *buf = NULL;
 	uint64_t size = 64;
-	int       i;
+	int      i;
 	PSPLITTER();
 
 	PSTART("increasing size buffer");
@@ -87,9 +88,10 @@ void test_buf_new_increasing_size(void)
 			abort();
 		}
 
-		if (NULL == buf->data) {
+		//if (NULL == buf->data) {
+		if (buf_data_is_null(buf) == YES) {
 			/*@ignore@*/
-			printf("increasing size buffer: data == NULL (%p), asked size: %zu, iteration: %d\n", buf->data, size, i);
+			printf("increasing size buffer: data == NULL (%p), asked size: %zu, iteration: %d\n", buf_data(buf), size, i);
 			/*@end@*/
 			PFAIL("increasing size buffer");
 			abort();
@@ -147,11 +149,13 @@ void test_buf_string(size_t buffer_init_size)
 	}
 #endif
 
-	if (strlen(buf->data) != strlen(str)) {
+	//if (strlen(buf->data) != strlen(str)) {
+	if (strlen(buf_data(buf)) != strlen(str)) {
 		/*@ignore@*/
 		printf("[After buf_add: wrong string len of buf->data]\n");
 		printf("[Added string len = %zu]\n", strlen(str));
-		printf("[buf->data len = %zu]\n", strlen(buf->data));
+		//printf("[buf->data len = %zu]\n", strlen(buf->data));
+		printf("[buf->data len = %zu]\n", strlen(buf_data(buf)));
 		/*@end@*/
 		PFAIL("buf_string");
 		abort();
@@ -183,11 +187,14 @@ void test_buf_string(size_t buffer_init_size)
 		abort();
 	}
 
-	if (strlen(buf->data) != (strlen(str) + strlen(str2))) {
+	//if (strlen(buf->data) != (strlen(str) + strlen(str2))) {
+	if (strlen(buf_data(buf)) != (strlen(str) + strlen(str2))) {
 		/*@ignore@*/
 		printf("[buf->used != added strings]\n");
-		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf->data), strlen(str) + strlen(str2));
-		printf("[String is: |%s|, added strings: |%s%s|]\n", buf->data, str, str2);
+		//printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf->data), strlen(str) + strlen(str2));
+		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf_data(buf)), strlen(str) + strlen(str2));
+		//printf("[String is: |%s|, added strings: |%s%s|]\n", buf->data, str, str2);
+		printf("[String is: |%s|, added strings: |%s%s|]\n", (char *) buf_data(buf), str, str2);
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		/*@end@*/
@@ -214,6 +221,7 @@ void test_buf_pack_string(void)
 	char       *con_str = NULL;
 	buf_s64_t  len;
 	buf_s64_t  len2;
+	int        rc;
 
 	PSPLITTER();
 
@@ -236,7 +244,8 @@ void test_buf_pack_string(void)
 
 	PSTEP("Adding str");
 
-	if (strlen(buf->data) != strlen(str)) {
+	//if (strlen(buf->data) != strlen(str)) {
+	if (strlen(buf_data(buf)) != strlen(str)) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -256,7 +265,8 @@ void test_buf_pack_string(void)
 		abort();
 	}
 
-	if ((buf_s64_t)strlen(buf->data) != (len + len2)) {
+	//if ((buf_s64_t)strlen(buf->data) != (len + len2)) {
+	if ((buf_s64_t)strlen(buf_data(buf)) != (len + len2)) {
 		PFAIL("buf_pack_string");
 		abort();
 	}
@@ -288,13 +298,18 @@ void test_buf_pack_string(void)
 	}
 
 	memset(con_str, 0, len + len2 + 1);
-	snprintf(con_str, len + len2 + 1, "%s%s", str, str2);
+	rc = snprintf(con_str, len + len2 + 1, "%s%s", str, str2);
+	if (rc != len + len2) {
+		PFAIL("snprintf failed (this is very strange!)");
+		abort();
+	}
 
-	if (0 != strcmp(buf->data, con_str)) {
+	//if (0 != strcmp(buf->data, con_str)) {
+	if (0 != strcmp(buf_data(buf), con_str)) {
 		PFAIL("buf_pack_string: Strings are differ");
 		abort();
 	}
-	//printf("%s\n", buf->data);
+	//printf("%s\n", buf_data(buf));
 	if (OK != buf_free(buf)) {
 		PFAIL("buf_pack_string: Can npt free the buffer");
 		abort();
@@ -315,6 +330,8 @@ void test_buf_str_concat(void)
 	char       *con_str = NULL;
 	buf_s64_t  len1;
 	buf_s64_t  len2;
+
+	int        rc;
 
 	len1 = strlen(str1);
 	len2 = strlen(str2);
@@ -366,7 +383,8 @@ void test_buf_str_concat(void)
 
 	PSTEP("buf_str_concat OK");
 
-	if ((buf_s64_t)strlen(buf1->data) != (len1 + len2)) {
+	//if ((buf_s64_t)strlen(buf1->data) != (len1 + len2)) {
+	if ((buf_s64_t)strlen(buf_data(buf1)) != (len1 + len2)) {
 		PFAIL("buf_str_concat: bad length");
 		abort();
 	}
@@ -398,9 +416,14 @@ void test_buf_str_concat(void)
 	}
 
 	memset(con_str, 0, len1 + len2 + 1);
-	snprintf(con_str, len1 + len2 + 1, "%s%s", str1, str2);
+	rc = snprintf(con_str, len1 + len2 + 1, "%s%s", str1, str2);
+	if (rc != len1 + len2) {
+		PFAIL("snprintf failed (this is very strange!)");
+		abort();
+	}
 
-	if (0 != strcmp(buf1->data, con_str)) {
+	//if (0 != strcmp(buf1->data, con_str)) {
+	if (0 != strcmp(buf_data(buf1), con_str)) {
 		PFAIL("buf_str_concat: string is not the same");
 		abort();
 	}
@@ -425,7 +448,7 @@ void test_buf_str_concat(void)
 void test_buf_pack(void)
 {
 	/*@only@*/ buf_t     *buf          = NULL;
-	/*@only@*/ char      *buf_data     = NULL;
+	/*@only@*/ char      *_buf_data     = NULL;
 	buf_s64_t buf_data_size = 256;
 	buf_s64_t i;
 	time_t    current_time  = time(0);
@@ -443,17 +466,19 @@ void test_buf_pack(void)
 
 	PSTEP("Allocated buffer");
 
-	buf_data = malloc(256);
-	if (NULL == buf_data) {
+	_buf_data = malloc(256);
+	if (NULL == _buf_data) {
 		PFAIL("Can't allocate buffer");
 		abort();
 	}
 
 	PSTEP("Allocated local buffer for random data");
 
+	memset(_buf_data, 0, 256);
+
 	for (i = 0; i < buf_data_size; i++) {
 		char randomNumber = (char)random();
-		buf_data[i] = randomNumber;
+		_buf_data[i] = randomNumber;
 	}
 
 
@@ -462,7 +487,7 @@ void test_buf_pack(void)
 	/* Make sure that this buffer ended not with 0 */
 	//buf_data[buf_data_size - 1] = 9;
 
-	if (OK != buf_add(buf, buf_data, buf_data_size)) {
+	if (OK != buf_add(buf, _buf_data, buf_data_size)) {
 		PFAIL("buf_pack: can't add");
 		abort();
 	}
@@ -475,7 +500,9 @@ void test_buf_pack(void)
 	}
 
 	/* Compare memory */
-	if (0 != memcmp(buf->data, buf_data, buf_data_size)) {
+	//if (0 != memcmp(buf->data, buf_data, buf_data_size)) {
+	
+	if (0 != memcmp(buf_data(buf), _buf_data, buf_data_size)) {
 		PFAIL("buf_pack");
 		abort();
 	}
@@ -509,7 +536,7 @@ void test_buf_pack(void)
 		PFAIL("Can not free the buffer");
 		abort();
 	}
-	free(buf_data);
+	free(_buf_data);
 
 	PSUCCESS("buf_pack");
 }
@@ -517,7 +544,7 @@ void test_buf_pack(void)
 void test_buf_canary(void)
 {
 	/*@only@*/ buf_t         *buf          = NULL;
-	/*@only@*/ char          *buf_data     = NULL;
+	/*@only@*/ char          *_buf_data     = NULL;
 	buf_s64_t     buf_data_size = 256;
 	buf_s64_t     i;
 	time_t        current_time  = time(0);
@@ -546,22 +573,24 @@ void test_buf_canary(void)
 
 	PSTEP("Allocated buffer");
 
-	buf_data = malloc(256);
-	if (NULL == buf_data) {
+	_buf_data = malloc(256);
+	if (NULL == _buf_data) {
 		PFAIL("Can't allocate buffer");
 		abort();
 	}
+
+	memset(_buf_data, 0, 256);
 
 	PSTEP("Allocated local buffer for random data");
 
 	for (i = 0; i < buf_data_size; i++) {
 		char randomNumber = (char)random();
-		buf_data[i] = randomNumber;
+		_buf_data[i] = randomNumber;
 	}
 
 	PSTEP("Filled local buffer with random data");
 
-	if (OK != buf_add(buf, buf_data, buf_data_size - 1)) {
+	if (OK != buf_add(buf, _buf_data, buf_data_size - 1)) {
 		PFAIL("buf_pack: can't add");
 		abort();
 	}
@@ -574,7 +603,8 @@ void test_buf_canary(void)
 	}
 
 	/* Compare memory */
-	if (0 != memcmp(buf->data, buf_data, buf_data_size - 1)) {
+	//if (0 != memcmp(buf->data, buf_data, buf_data_size - 1)) {
+	if (0 != memcmp(buf_data(buf), _buf_data, buf_data_size - 1)) {
 		PFAIL("buf_canary: buffer is wrong");
 		abort();
 	}
@@ -590,9 +620,10 @@ void test_buf_canary(void)
 	PSTEP("Canary word is OK for the buffer");
 
 	/* Now we copy the full buffer into buf->data and such we break the canary pattern */
-	memcpy(buf->data, buf_data, buf_data_size);
+	//memcpy(buf->data, buf_data, buf_data_size);
+	memcpy(buf_data(buf), _buf_data, buf_data_size);
 
-	PSTEP("Corrupted buf->data: we expect an ERR");
+	PSTEP("Corrupted buf: we expect an ERR");
 
 	/* Test canary: we expect it to be wrong */
 	if (OK == buf_test_canary(buf)) {
@@ -634,7 +665,7 @@ void test_buf_canary(void)
 
 	PSTEP("Buffer released");
 
-	free(buf_data);
+	free(_buf_data);
 
 	buf_restore_flags(flags);
 

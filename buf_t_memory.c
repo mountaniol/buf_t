@@ -3,9 +3,9 @@
 #include <string.h>
 /*@=skipposixheaders@*/
 
-/*@null@*/ /*@temp@*/void *zmalloc(size_t sz)
+/*@null@*/ /*@only@*/void *zmalloc(size_t sz)
 {
-	/*@temp@*/void *ret = malloc(sz);
+	/*@only@*/void *ret = malloc(sz);
 	if (NULL == ret) return (NULL);
 	memset(ret, 0, sz);
 	return (ret);
@@ -13,7 +13,7 @@
 
 /*@null@*/ /*@only@*/void *zmalloc_any(size_t asked, size_t *allocated)
 {
-	/*@shared@*/void *ret = NULL;
+	/*@only@*//*@in@*/void *ret = NULL;
 
 	while (NULL == ret && asked > 0) {
 		ret = zmalloc(asked);

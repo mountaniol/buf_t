@@ -113,9 +113,11 @@
 //#include "mp-common.h"
 
 typedef enum {
+	AGN = -2, /* "Try again" status */
 	BAD = -1,  /* Error status */
-	OK = 0,       /* Success status */
-	AGN = 1, /* "Try again" status */
+	OK = 0,    /* Success status */
+	YES = 0,   /* YES in case a function returns YES or NO */
+	NO = 1,    /* NO in case a function returns YES or NO */
 } ret_t;
 
 #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
@@ -123,7 +125,7 @@ typedef enum {
 
 /* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
 extern int bug_get_abort_flag(void);
-#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
 
 #ifdef TFREE_SIZE
 	#undef TFREE_SIZE
@@ -205,7 +207,7 @@ struct buf_t_struct {
 };
 #endif
 
-typedef struct buf_t_struct buf_t;
+typedef /*@abstract@*/ struct buf_t_struct buf_t;
 
 /* buf_t flags */
 
@@ -248,6 +250,7 @@ typedef struct buf_t_struct buf_t;
 /* Buffer is crc32 protected */
 #define BUF_T_CRC  (1 << (BUF_T_TYPE_WIDTH + 4))
 
+/*@access buf_t@*/
 #define BUF_TYPE(buf) (buf->flags & BUF_T_TYPE_MASK)
 #define IS_BUF_STRING(buf) ( BUF_TYPE(buf) == BUF_T_STRING )
 #define IS_BUF_BIT(buf) ( BUF_TYPE(buf) == BUF_T_BIT )
@@ -262,6 +265,7 @@ typedef struct buf_t_struct buf_t;
 #define SET_BUF_RO(buf) (buf->flags |= BUF_T_READONLY)
 #define SET_BUF_COMPRESSED(buf) (buf->flags |= BUF_T_COMPRESSED)
 #define SET_BUF_ENCRYPTED(buf) (buf->flags |= BUF_T_ENCRYPTED)
+/*@noaccess buf_t@*/
 
 /* CANARY: Set a mark after allocated buffer*/
 /* PRO and CONTRA of this method:*/
@@ -360,6 +364,32 @@ extern void buf_default_flags(buf_t_flags_t f);
  *  Return -EINVAL if buffer or data is NULL
  */
 extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_s64_t size, const buf_s64_t len);
+
+/**
+ * @author Sebastian Mountaniol (12/19/21)
+ * void* buf_data(buf_t *buf)
+ * 
+ * @brief Returns buf->data
+ * @param buf - Buf to return data from
+ * 
+ * @return void* Returns buf->data; NULL on an error
+ * @details 
+ */
+extern void /*@temp@*/ *buf_data(/*@temp@*/buf_t *buf);
+
+
+/**
+ * @author Sebastian Mountaniol (12/19/21)
+ * ret_t buf_data_is_null(buf_t *buf)
+ * 
+ * @brief Test that the buf->data is NULL
+ * @param buf - Buffer to test
+ * 
+ * @return ret_t YES if data is NULL, NO if data not NULL,
+ *  	   -EINVAL if the buffer is NULL pointer
+ * @details 
+ */
+extern ret_t buf_data_is_null(/*@temp@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
@@ -590,6 +620,7 @@ extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_s64_t inc);
  *  		else BAD error returned and no value decremented
  */
 extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_s64_t dec);
+
 /**
  * @author Sebastian Mountaniol (01/06/2020)
  * @func err_t buf_pack(buf_t *buf)
