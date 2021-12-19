@@ -62,7 +62,7 @@ void test_buf_new_zero_size(void)
 void test_buf_new_increasing_size(void)
 {
 	buf_t     *buf = NULL;
-	buf_s64_t size = 64;
+	uint64_t size = 64;
 	int       i;
 	PSPLITTER();
 
@@ -79,7 +79,7 @@ void test_buf_new_increasing_size(void)
 			abort();
 		}
 
-		if (buf_used(buf) != 0 || buf_room(buf) != size) {
+		if ((uint64_t)buf_used(buf) != 0 || (uint64_t)buf_room(buf) != size) {
 			/*@ignore@*/
 			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_used(buf), buf_room(buf), size);
 			/*@end@*/
@@ -424,8 +424,8 @@ void test_buf_str_concat(void)
 
 void test_buf_pack(void)
 {
-	buf_t     *buf          = NULL;
-	char      *buf_data     = NULL;
+	/*@only@*/ buf_t     *buf          = NULL;
+	/*@only@*/ char      *buf_data     = NULL;
 	buf_s64_t buf_data_size = 256;
 	buf_s64_t i;
 	time_t    current_time  = time(0);
@@ -516,8 +516,8 @@ void test_buf_pack(void)
 
 void test_buf_canary(void)
 {
-	buf_t         *buf          = NULL;
-	char          *buf_data     = NULL;
+	/*@only@*/ buf_t         *buf          = NULL;
+	/*@only@*/ char          *buf_data     = NULL;
 	buf_s64_t     buf_data_size = 256;
 	buf_s64_t     i;
 	time_t        current_time  = time(0);

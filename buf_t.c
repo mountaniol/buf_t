@@ -730,11 +730,16 @@ ret_t buf_free(/*@only@*//*@null@*/buf_t *buf)
 	return (OK);
 }
 
-ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size)
+/*
+ * buf can not be NULL
+ * new_data can not be NULL 				  *
+ *
+	*/
+ret_t buf_add(/*@temp@*/ buf_t *buf, /*@temp@*/const char *new_data, const buf_s64_t size)
 {
 	size_t new_size;
 	TESTP_ASSERT(buf, "buf is NULL");
-	TESTP_ASSERT(buf, "data is NULL");
+	TESTP_ASSERT(new_data, "buf is NULL");
 	if (size < 1) {
 		/*@ignore@*/
 		DE("Wrong argument(s): b = %p, buf = %p, size = %lu\n", buf, new_data, size);

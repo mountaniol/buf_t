@@ -201,7 +201,7 @@ struct buf_t_struct {
 		head_tail_t ht;             /* Head and tail of circular buffer */
 	};
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
-	/*@temp@*/char *data;       /* Pointer to data */
+	/*@only@*/ char *data;       /* Pointer to data */
 };
 #endif
 
@@ -320,7 +320,7 @@ extern int bug_get_abort_flag(void);
 
 /** If there is 'abort on error' is set, this macro stops
  *  execution and generates core file */
-#define TRY_ABORT() do{ if(bug_get_abort_flag()) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
+#define TRY_ABORT() do{ if(0 != bug_get_abort_flag()) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)

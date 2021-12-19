@@ -67,7 +67,7 @@ extern ret_t buf_str_pack(/*@null@*/buf_t *buf);
  * @param char * format Format (like in printf first argument )
  * @return buf_t*
  */
-extern buf_t *buf_sprintf(const char *format, ...);
+extern /*@null@*/ buf_t *buf_sprintf(const char *format, ...);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
