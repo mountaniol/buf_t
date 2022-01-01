@@ -14,7 +14,7 @@
 #include "buf_t_debug.h"
 
 //extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
-int test_buf_t(const uint8_t *data, size_t size)
+int test_buf_t(uint8_t *data, size_t size)
 {
 	buf_t *buf  = buf_new(size);
 	buf_t *buf2;
