@@ -65,7 +65,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	return (buf);
 }
 
-/*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_s64_t size_without_0)
+/*@null@*/ buf_t *buf_from_string(/*@in@*//*@temp@*/char *str, const buf_s64_t size_without_0)
 {
 	/*@in@*/buf_t *buf = NULL;
 	/* The string must be not NULL */
@@ -81,7 +81,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	buf = buf_new(0);
 	TESTP(buf, NULL);
 
-	if (OK != buf_set_flag(buf, BUF_T_STRING)) {
+	if (OK != buf_set_flag(buf, BUF_T_TYPE_STRING)) {
 		DE("Can't set STRING flag\n");
 		if (OK != buf_free(buf)) {
 			DE("Can't release a buffer\n");
@@ -112,7 +112,7 @@ err:
 	/*@end@**/
 }
 
-ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size)
+ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *new_data, const buf_s64_t size)
 {
 	size_t new_size;
 
@@ -145,7 +145,7 @@ ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const bu
 	return (OK);
 }
 
-ret_t buf_str_detect_used(/*@null@*/buf_t *buf)
+ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 {
 	char      *_buf_data;
 	buf_s64_t calculated_used_size;
@@ -190,7 +190,7 @@ ret_t buf_str_detect_used(/*@null@*/buf_t *buf)
 	return (OK);
 }
 
-ret_t buf_str_pack(/*@in@*/buf_t *buf)
+ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 {
 	/*@temp@*/ char   *tmp = NULL;
 	size_t new_size = -1;
@@ -249,7 +249,7 @@ ret_t buf_str_pack(/*@in@*/buf_t *buf)
 	return (OK);
 }
 
-buf_t *buf_sprintf(/*@in@*/const char *format, ...)
+/*@null@*/buf_t *buf_sprintf(/*@in@*//*@temp@*/const char *format, ...)
 {
 	va_list args;
 	/*@temp@*//*@in@*/buf_t   *buf = NULL;
@@ -312,10 +312,10 @@ buf_t *buf_sprintf(/*@in@*/const char *format, ...)
 	return (buf);
 }
 
-ret_t buf_str_concat(buf_t *dst, buf_t *src)
+ret_t buf_str_concat(/*@in@*//*@temp@*//*notnull*/buf_t *dst, /*@in@*//*@temp@*//*notnull*/buf_t *src)
 {
-	char *_dst_buf_data = NULL;
-	char *_src_buf_data = NULL;
+	char *_dst_buf_data;
+	char *_src_buf_data;
 	T_RET_ABORT(src, -EINVAL);
 	T_RET_ABORT(dst, -EINVAL);
 

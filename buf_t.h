@@ -3,106 +3,10 @@
 
 #include <stddef.h>
 #include <sys/types.h>
+#include "buf_t_types.h"
+#include "buf_t_structs.h"
 //#define BUF_DEBUG
 #define BUF_NOISY
-
-/*
- * buf_t is an implementation of abstract buffer.
- * This buffer keeps data and its size.
- * buf->data - data.
- * buf->room - allocated memory
- * buf->used - size of used memory
- * 
- * A set of function help to manipulate the buffer: allocate / delete / add data and more.
- * Here is several examples:
- * 
- * ==== Example 1 ====
- * // Allocate buffer
- * buf_t *buf = buf_new(NULL, 0);
- * 
- * // Add data to the buffer
- * buf_add(buf, "Aloha", 5);
- * buf_add(buf, "/", 1);
- * buf_add(buf, "Shalom", 6);
- * 
- * // Now buffer contains string "Aloha/Shalom" without null terminator.
- * // The buf->room == 12
- * // The buf->used == 12
- * 
- * // Destroy buffer
- * buf_free(buf);
- * 
- * // The buffer and its memory securely destroyed: all data filled with 0 before it releaased.
- * // The 'buf' structure as well filled with '0' before destroyed.
- * 
- * ==== Example 2 ====
- * 
- * // Allocate buffer with memory == 32 bytes
- * buf_t = buf_new(NULL, 32);
- * // buf->data is buffer 32 bytes filled with '0'
- * 
- * // Add data
- * buf_add(buf, "Aloha", 5);
- * // buf->data contains "Aloha"
- * // buf->used == 5
- * // buf->room == 32
- * 
- * // Shrink memory to size of used area
- * buf_pack(buf)
- * // buf->data contains "Aloha"
- * // buf->used == 5
- * // buf->room == 5
- * 
- * buf_free(buf);
- * 
- * ==== Example 3 ====
- * 
- * // print string into buf_t
- * buf_t *buf = buf_sprintf("%s %s %s", "Lemon", "is", "yellow"); // buf_t allocated; // string
- * length measured and buf->data allocated, including terminating '\0'
- * 
- * 
- * // Now buf->data contains "Lemon is yellow\0"
- * // buf->used == 16
- * // buf->room == 16
- * // The used length contains terminating \0
- * 
- * // Print this string
- * printf("buf->data == %s; buf->used = %u\n", buf->data, buf->used);
- * 
- * // Release buffer
- * buf_free(buf);
- * 
- * ==== Example 4 ====
- * 
- * // print string into buf_t
- * buf_t *buf = buf_sprintf("%s %s %s", "Lemon", "is", "yellow"); // buf_t allocated; // string
- * length measured and buf->data allocated, including terminating '\0'
- * 
- * 
- * // Now buf->data contains "Lemon is yellow\0"
- * // buf->used == 16
- * // buf->room == 16
- * // The used length contains terminating \0
- * 
- * // Steal string from buffer
- * char *str = buf_steal_data(buf);
- * // Now str == "Lemon is yellow\0"
- * // buf->used == 0
- * // buf->room == 0
- * // buf->data == NULL
- * 
- * // Print this string
- * printf("string == %s\n", str);
- * 
- * // Release buffer
- * buf_free(buf);
- * 
- * // Release string
- * free(str);
- * 
- */
-
 
 /* For uint32_t / uint8_t */
 //#include <linux/types.h>
@@ -112,20 +16,13 @@
 /* For err_t */
 //#include "mp-common.h"
 
-typedef enum {
-	AGN = -2, /* "Try again" status */
-	BAD = -1,  /* Error status */
-	OK = 0,    /* Success status */
-	YES = 0,   /* YES in case a function returns YES or NO */
-	NO = 1,    /* NO in case a function returns YES or NO */
-} ret_t;
-
 #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
 #define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
 
 /* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
 extern int bug_get_abort_flag(void);
-#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+//#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
 
 #ifdef TFREE_SIZE
 	#undef TFREE_SIZE
@@ -133,138 +30,29 @@ extern int bug_get_abort_flag(void);
 
 #define TFREE_SIZE(x,sz) do { if(NULL != x) {memset(x,0,sz);free(x); x = NULL;} else {DE(">>>>>>>> Tried to free_size() NULL: %s (%s +%d)\n", #x, __func__, __LINE__);} }while(0)
 
-/* Whidth of the flags field */
-typedef uint8_t buf_t_flags_t;
-
-/* Size of 'room' and 'used':
- * 1. If this type is "uint64", the max size of data buffer is:
- * 18446744073709551615 bytes,
- * or 18446744073709552 KB,
- * or 18446744073709.550781 Mb
- * or 18446744073.709552765 Gb
- * or 18446744.073709551245 Tb
- *
- * Large enough to keep whatever you want, at least for the next 10 years )
- *
- * 2. In case of CIRCULAR buffer we use half of the 'used' field to keep head of the buffer,
- * another half to keep the tail. In this case max value of the head tail is:
- *
- * 4294967295 bytes,
- * or 4294967.295 Kb
- * or 4294.967295 Mb
- * or 4.294967295 Gb
- *
- * Not as impressive as uint64. In case we need more, the type should be increased to uint128
- * 
- * 2. If this size redefined to uint16, the max size of data buffer is:
- * 65535 bytes, or 65 Kilobyte
- * 
- * Be careful if you do resefine this type.
- * If you plan to used buf_t for file opening / reading / writing, you may have a problem if this
- * type is too small.
- * 
- */
-
-typedef int64_t buf_s64_t;
-//typedef int64_t  buf_ssize_t;
-typedef uint32_t buf_circ_usize_t;
-
-typedef struct head_tail_struct {
-	buf_circ_usize_t head;
-	buf_circ_usize_t tail;
-} head_tail_t;
-
-/* Simple struct to hold a buffer / string and its size / lenght */
-
-#ifdef BUF_DEBUG
-struct buf_t_struct {
-	buf_s64_t room;           /* Allocated size */
-	union {
-		buf_s64_t used;           /* Used size */
-		head_tail_t ht;             /* Head and tail of circular buffer */
-	};
-	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
-	/*@temp@*/char *data;       /* Pointer to data */
-
-	/* Where this buffer allocated: function */
-	const char *func;
-	/* Where this buffer allocated: file */
-	const char *filename;
-	/* Where this buffer allocated: line */
-	int line;
-};
-
-#else /* Not debug */
-/* Simple struct to hold a buffer / string and its size / lenght */
-struct buf_t_struct {
-	buf_s64_t room;           /* Allocated size */
-	union {
-		buf_s64_t used;           /* Used size */
-		head_tail_t ht;             /* Head and tail of circular buffer */
-	};
-	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
-	/*@only@*/ char *data;       /* Pointer to data */
-};
-#endif
-
 typedef /*@abstract@*/ struct buf_t_struct buf_t;
 
-/* buf_t flags */
-
-/* How many bits are reserved for buffer type */
-#define BUF_T_TYPE_WIDTH 3
-
-/* We use mask to isolate type from other flags */
-#define BUF_T_TYPE_MASK  0x07
-
-/** Types **/
-/* This is just a regular buffer, keeping user's raw data.
-   User knows what to do with it, we don't care */
-#define BUF_T_RAW        	0
-
-/* String buffer. In this case, additional tests enabled */
-#define BUF_T_STRING        1
-
-/* Bit buffer */
-#define BUF_T_BIT      		2
-
-/* Circular buffer */
-#define BUF_T_CIRC			3
-#define BUF_T_CIRC_HEAD_WIDTH (32)
-#define BUF_T_CIRC_MASK (0x0000FFFF)
-
-/** Flags **/
-
-/* Buffer is read only; for example you may keep a static char * / const char * in buf_t */
-#define BUF_T_READONLY     (1 << BUF_T_TYPE_WIDTH)
-
-/* Buffer is compressed */
-#define BUF_T_COMPRESSED (1 << (BUF_T_TYPE_WIDTH + 1))
-
-/* Buffer is enctypted */
-#define BUF_T_ENCRYPTED  (1 << (BUF_T_TYPE_WIDTH + 2))
-
-/* Buffer is enctypted */
-#define BUF_T_CANARY  (1 << (BUF_T_TYPE_WIDTH + 3))
-
-/* Buffer is crc32 protected */
-#define BUF_T_CRC  (1 << (BUF_T_TYPE_WIDTH + 4))
-
 /*@access buf_t@*/
-#define BUF_TYPE(buf) (buf->flags & BUF_T_TYPE_MASK)
-#define IS_BUF_STRING(buf) ( BUF_TYPE(buf) == BUF_T_STRING )
-#define IS_BUF_BIT(buf) ( BUF_TYPE(buf) == BUF_T_BIT )
-#define IS_BUF_CIRC(buf) ( BUF_TYPE(buf) == BUF_T_CIRC )
-#define IS_BUF_RO(buf) (buf->flags & BUF_T_READONLY)
-#define IS_BUF_COMPRESSED(buf) (buf->flags & BUF_T_COMPRESSED)
-#define IS_BUF_ENCRYPTED(buf) (buf->flags & BUF_T_ENCRYPTED)
-#define IS_BUF_CANARY(buf) (buf->flags & BUF_T_CANARY)
-#define IS_BUF_CRC(buf) (buf->flags & BUF_T_CRC)
 
-#define SET_BUF_STRING(buf) (buf->flags |= BUF_T_STRING)
-#define SET_BUF_RO(buf) (buf->flags |= BUF_T_READONLY)
-#define SET_BUF_COMPRESSED(buf) (buf->flags |= BUF_T_COMPRESSED)
-#define SET_BUF_ENCRYPTED(buf) (buf->flags |= BUF_T_ENCRYPTED)
+/* Types test */
+#define BUF_TYPE(buf) (buf->flags & BUF_T_TYPE_MASK)
+#define IS_BUF_TYPE_STRING(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_STRING )
+#define IS_BUF_TYPE_BIT(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_BIT )
+#define IS_BUF_TYPE_CIRC(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_CIRC )
+#define IS_BUF_TYPE_ARR(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_ARR )
+
+/* Flags test */
+#define IS_BUF_RO(buf) (buf->flags & BUF_T_FLAG_READONLY)
+#define IS_BUF_COMPRESSED(buf) (buf->flags & BUF_T_FLAG_COMPRESSED)
+#define IS_BUF_ENCRYPTED(buf) (buf->flags & BUF_T_FLAG_ENCRYPTED)
+#define IS_BUF_CANARY(buf) (buf->flags & BUF_T_FLAG_CANARY)
+#define IS_BUF_CRC(buf) (buf->flags & BUF_T_FLAG_CRC)
+
+/* Type set */
+#define SET_BUF_TYPE_STRING(buf) (buf->flags |= BUF_T_TYPE_STRING)
+#define SET_BUF_TYPE_RO(buf) (buf->flags |= BUF_T_FLAG_READONLY)
+#define SET_BUF_TYPE_COMPRESSED(buf) (buf->flags |= BUF_T_FLAG_COMPRESSED)
+#define SET_BUF_TYPE_ENCRYPTED(buf) (buf->flags |= BUF_T_FLAG_ENCRYPTED)
 /*@noaccess buf_t@*/
 
 /* CANARY: Set a mark after allocated buffer*/
@@ -272,16 +60,6 @@ typedef /*@abstract@*/ struct buf_t_struct buf_t;
 /* PRO: It can help to catch memory problems */
 /* Contras: The buffer increased, and buffer validation should be run on every buffer operation */
 /* The mark we set at the end of the buf if PROTECTED flag is enabled */
-
-/* Size of canary */
-//typedef uint32_t buf_t_canary_t;
-
-
-//typedef uint32_t buf_t_canary_t;
-/* We use 2 characters as canary tail = 1 short */
-//typedef uint16_t buf_t_canary_t;
-typedef uint8_t buf_t_canary_t;
-typedef uint8_t buf_t_checksum_t;
 
 /* Canary size: the size of special buffer added after data to detect data tail corruption */
 #define BUF_T_CANARY_SIZE (sizeof(buf_t_canary_t))
@@ -363,7 +141,7 @@ extern void buf_default_flags(buf_t_flags_t f);
  *  Return -EACCESS if the buffer is read-only
  *  Return -EINVAL if buffer or data is NULL
  */
-extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_s64_t size, const buf_s64_t len);
+extern ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only@*/ /*@in@*/char *data, const buf_s64_t size, const buf_s64_t len);
 
 /**
  * @author Sebastian Mountaniol (12/19/21)
@@ -375,7 +153,7 @@ extern ret_t buf_set_data(/*@null@*/buf_t *buf, /*@null@*/char *data, const buf_
  * @return void* Returns buf->data; NULL on an error
  * @details 
  */
-extern void /*@temp@*/ *buf_data(/*@temp@*/buf_t *buf);
+extern void /*@temp@*/ *buf_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 
 /**
@@ -389,7 +167,7 @@ extern void /*@temp@*/ *buf_data(/*@temp@*/buf_t *buf);
  *  	   -EINVAL if the buffer is NULL pointer
  * @details 
  */
-extern ret_t buf_data_is_null(/*@temp@*/buf_t *buf);
+extern ret_t buf_data_is_null(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (15/06/2020)
@@ -400,7 +178,7 @@ extern ret_t buf_data_is_null(/*@temp@*/buf_t *buf);
  * 	Returns EINVAL if the 'buf' == NULL.
  * 	Returns EBAD if this buffer is invalid.
  */
-extern ret_t buf_is_valid(buf_t *buf);
+extern ret_t buf_is_valid(/*@temp@*/ /*@in@*/buf_t *buf);
 
 /**
  * @func buf_t* buf_new(size_t size)
@@ -410,7 +188,7 @@ extern ret_t buf_is_valid(buf_t *buf);
  * @param size_t size Data buffer size, may be 0
  * @return buf_t* New buf_t structure.
  */
-extern /*@null@*/ buf_t *buf_new(buf_s64_t size);
+extern /*@null@*/ /*@in@*/buf_t *buf_new(buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -423,7 +201,7 @@ extern /*@null@*/ buf_t *buf_new(buf_s64_t size);
  * 	Returns -ECANCELED if data == NULL but size > 0
  * 	Returns -EACCESS if this buffer already marked as read-only.
  */
-extern ret_t buf_set_data_ro(buf_t *buf, char *data, buf_s64_t size);
+extern ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -434,7 +212,7 @@ extern ret_t buf_set_data_ro(buf_t *buf, char *data, buf_s64_t size);
  * @return void* Data buffer pointer on success, NULL on error. Warning: if the but_t did not have a
  * 	buffer (i.e. buf->data was NULL) the NULL will be returned.
  */
-extern /*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf);
+extern /*@null@*//*@only@*/void *buf_steal_data(/*@temp@*/ /*@in@*//*@special@*/ buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -445,7 +223,7 @@ extern /*@null@*/void *buf_steal_data(/*@null@*/buf_t *buf);
  * @param buf_t * buf Buffer to extract data
  * @return void* Pointer to buffer on success (buf if the buffer is empty NULL will be returned),
  */
-extern /*@null@*/void *buf_2_data(/*@null@*/buf_t *buf);
+extern /*@null@*/void *buf_2_data(/*@only@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @brief Remove data from buffer (and free the data), set buf->room = buf->len = 0
@@ -458,7 +236,7 @@ extern /*@null@*/void *buf_2_data(/*@null@*/buf_t *buf);
  * @details If the buffer is invalid (see buf_is_valid()),
  * @details the opreration won't be interrupted and buffer will be cleaned.
  */
-extern ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
+extern ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @func int buf_room(buf_t *buf, size_t size)
@@ -476,7 +254,7 @@ extern ret_t buf_clean(/*@only@*//*@null@*/buf_t *buf);
  *  case the buffer kept untouched. -ENOKEY if the buffer marked
  *  as CAANRY but CANARY work can't be added.
  */
-extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_s64_t size);
+extern ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size);
 
 /**
  * @func int buf_test_room(buf_t *buf, size_t expect)
@@ -491,7 +269,7 @@ extern ret_t buf_add_room(/*@null@*/buf_t *buf, buf_s64_t size);
  * 	EINVAL if buf is NULL or 'expected' == 0
  * 	Also can return all error statuses of buf_add_room()
  */
-extern ret_t buf_test_room(/*@null@*/buf_t *buf, buf_s64_t expect);
+extern ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect);
 
 /**
  * @func int buf_t_free_force(buf_t *buf)
@@ -503,7 +281,7 @@ extern ret_t buf_test_room(/*@null@*/buf_t *buf, buf_s64_t expect);
  * 	EACCESS if the buf is read-only
  * 	ECANCELED if the buffer is invalid
  */
-extern ret_t buf_free(/*@only@*//*@null@*/buf_t *buf);
+extern ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @func err_t buf_add(buf_t *buf, const char *new_data, const size_t size)
@@ -518,7 +296,7 @@ extern ret_t buf_free(/*@only@*//*@null@*/buf_t *buf);
  * 	EACCESS if the 'buf' is read-only
  * 	ENOMEM if new memory can't be allocated
  */
-extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size);
+extern ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const char *new_data, const buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -528,7 +306,7 @@ extern ret_t buf_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const
  * @return ssize_t Number of bytes used on success
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_s64_t buf_used(/*@null@*/buf_t *buf);
+extern buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -541,7 +319,7 @@ extern buf_s64_t buf_used(/*@null@*/buf_t *buf);
  * @return ret_t 
  * @details 
  */
-extern ret_t buf_set_used(buf_t *buf, buf_s64_t used);
+extern ret_t buf_set_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -555,7 +333,7 @@ extern ret_t buf_set_used(buf_t *buf, buf_s64_t used);
  * @return ret_t OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_inc_used(buf_t *buf, buf_s64_t used);
+extern ret_t buf_inc_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -569,7 +347,7 @@ extern ret_t buf_inc_used(buf_t *buf, buf_s64_t used);
  * @return ret_t OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_dec_used(buf_t *buf, buf_s64_t dec);
+extern ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -579,7 +357,7 @@ extern ret_t buf_dec_used(buf_t *buf, buf_s64_t dec);
  * @return ssize_t How many bytes allocated for this 'buf'
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_s64_t buf_room(/*@null@*/buf_t *buf);
+extern buf_s64_t buf_room(/*@temp@*/ /*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -592,7 +370,7 @@ extern buf_s64_t buf_room(/*@null@*/buf_t *buf);
  * @return ret_t OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_set_room(/*@null@*/buf_t *buf, buf_s64_t room);
+extern ret_t buf_set_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t room);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -605,7 +383,7 @@ extern ret_t buf_set_room(/*@null@*/buf_t *buf, buf_s64_t room);
  * @return ret_t OK on sucess, BAD on an error
  * @details 
  */
-extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_s64_t inc);
+extern ret_t buf_inc_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t inc);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -619,7 +397,7 @@ extern ret_t buf_inc_room(/*@null@*/buf_t *buf, buf_s64_t inc);
  * @details The 'dec' must be less or equal to the buf->room,
  *  		else BAD error returned and no value decremented
  */
-extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_s64_t dec);
+extern ret_t buf_dec_room(/*@temp@*/ /*@in@*/buf_t *buf, buf_s64_t dec);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -637,7 +415,7 @@ extern ret_t buf_dec_room(/*@null@*/buf_t *buf, buf_s64_t dec);
  * 	ENOMEM if internal realloc can't reallocate / shring memory
  * 	Also can return one of buf_set_canary() errors
  */
-extern ret_t buf_pack(/*@null@*/buf_t *buf);
+extern ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -663,20 +441,21 @@ extern void buf_restore_flags(buf_t_flags_t flags);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_mark_string(buf_t *buf)
- * @brief Mark (set flag) the buf as a
- * buffer containing string
- * @param buf_t * buf Buf to mark
- * @return err_t OK on success, EINVAL if
- * 	buf in NULL
- */
-/**
- * @author Sebastian Mountaniol (18/06/2020)
- * @func err_t buf_mark_string(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing string buffer
- * data @param buf_t * buf Buffer to mark
+ * data
+ * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, -EINVAL if buf is NULL
  */
-extern ret_t buf_mark_string(buf_t *buf);
+extern ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/7/23)
+ * @brief Mark (set flag) the buf as a buffer containing an
+ * array
+ * @param buf_t * buf Buffer to mark as array
+ * @return err_t EOK on success, -EINVAL if buf is NULL
+ */
+extern ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -689,7 +468,7 @@ extern ret_t buf_mark_string(buf_t *buf);
  * @return ret_t OK on success, -EINVAL if NULL pointer received
  * @details 
  */
-extern ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f);
+extern ret_t buf_set_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -702,7 +481,7 @@ extern ret_t buf_set_flag(buf_t *buf, buf_t_flags_t f);
  * @return ret_t 
  * @details 
  */
-extern ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f);
+extern ret_t buf_rm_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_mark_ro(buf_t *buf)
@@ -710,7 +489,7 @@ extern ret_t buf_rm_flag(buf_t *buf, buf_t_flags_t f);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, -EINVAL if buf is NULL
  */
-extern ret_t buf_mark_ro(buf_t *buf);
+extern ret_t buf_mark_ro(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -719,7 +498,7 @@ extern ret_t buf_mark_ro(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_mark_compresed(buf_t *buf);
+extern ret_t buf_mark_compresed(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -728,7 +507,7 @@ extern ret_t buf_mark_compresed(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_mark_encrypted(buf_t *buf);
+extern ret_t buf_mark_encrypted(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -737,7 +516,7 @@ extern ret_t buf_mark_encrypted(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_mark_canary(buf_t *buf);
+extern ret_t buf_mark_canary(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -746,7 +525,7 @@ extern ret_t buf_mark_canary(buf_t *buf);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_mark_crc(buf_t *buf);
+extern ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -755,7 +534,7 @@ extern ret_t buf_mark_crc(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_string(buf_t *buf);
+extern ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -764,7 +543,7 @@ extern ret_t buf_unmark_string(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_ro(buf_t *buf);
+extern ret_t buf_unmark_ro(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -773,7 +552,7 @@ extern ret_t buf_unmark_ro(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_compressed(buf_t *buf);
+extern ret_t buf_unmark_compressed(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -782,7 +561,7 @@ extern ret_t buf_unmark_compressed(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_encrypted(buf_t *buf);
+extern ret_t buf_unmark_encrypted(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -791,7 +570,7 @@ extern ret_t buf_unmark_encrypted(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_canary(buf_t *buf);
+extern ret_t buf_unmark_canary(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -800,7 +579,7 @@ extern ret_t buf_unmark_canary(buf_t *buf);
  * @param buf_t * buf Buffer to unmark
  * @return err_t OK on success, EINVAL if buf is NULL
  */
-extern ret_t buf_unmark_crc(buf_t *buf);
+extern ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -815,7 +594,7 @@ extern ret_t buf_unmark_crc(buf_t *buf);
  *  pattern is not valid right after it set
  * @details If the buf doesn't have CANARY flag it will return ECANCELED.
  */
-extern ret_t buf_set_canary(buf_t *buf);
+extern ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -829,7 +608,7 @@ extern ret_t buf_set_canary(buf_t *buf);
  * @details Pay attention, the buffer will be decreased by 1 byte, and the last byte of the buffer
  *    will be replaced with CANARY mark. You must reserve the last byte for it.
  */
-extern ret_t buf_force_canary(buf_t *buf);
+extern ret_t buf_force_canary(/*@temp@*//*@in@*/ buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -841,7 +620,7 @@ extern ret_t buf_force_canary(buf_t *buf);
  * 	-ECANCELED if buf is not marked as a CANARY buffer,
  * 	EBAD if canary mark is invalid
  */
-extern ret_t buf_test_canary(buf_t *buf);
+extern ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/ buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -851,7 +630,7 @@ extern ret_t buf_test_canary(buf_t *buf);
  * @return buf_t_canary_t Value of CANARY byte, ((buf_t_canary_t)-1) on error
  * @details You may want to use this function if CANARY is damaged
  */
-extern buf_t_canary_t buf_get_canary(buf_t *buf);
+extern buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/ buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -859,7 +638,7 @@ extern buf_t_canary_t buf_get_canary(buf_t *buf);
  * @brief Print flags of the buffer. Useful for debug
  * @param buf_t * buf Buf to read flags
  */
-extern void buf_print_flags(buf_t *buf);
+extern void buf_print_flags(/*@temp@*//*@in@*/ buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -868,9 +647,19 @@ extern void buf_print_flags(buf_t *buf);
  * @param buf_t * buf Buffer to check
  * @return int EOK if the buf a string buffer
  * 	Returns -EINVAL if buf is NULL
- * 	Returns 1 if not
+ * 	Returns 1 if not a string buffer
  */
-extern int buf_is_string(buf_t *buf);
+extern int buf_is_string(/*@temp@*/ /*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/7/23)
+ * @brief Test if the buffer is an array buffer
+ * @param buf_t * buf Buffer to check
+ * @return int EOK if the buf an array buffer
+ * 	Returns -EINVAL if buf is NULL
+ * 	Returns 1 if not an array buffer
+ */
+extern int buf_is_array(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -883,7 +672,7 @@ extern int buf_is_string(buf_t *buf);
  *  	   is NULL, 1 if the buffer is not a bit buffer
  * @details 
  */
-extern int buf_is_bit(buf_t *buf);
+extern int buf_is_bit(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -896,7 +685,7 @@ extern int buf_is_bit(buf_t *buf);
  *  	   not, -EINVAL if the buffer id NULL pointer
  * @details 
  */
-extern int buf_is_circ(buf_t *buf);
+extern int buf_is_circ(/*@temp@*/ /*@in@*/buf_t *buf);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_detect_used(buf_t *buf)
@@ -907,7 +696,7 @@ extern int buf_is_circ(buf_t *buf);
  * 	EINVAL is 'buf' is NULL
  * 	ECANCELED if the buf is invalid or if the buf is empty
  */
-extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
+extern ret_t buf_detect_used(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -921,7 +710,7 @@ extern ret_t buf_detect_used(/*@null@*/buf_t *buf);
  * @return ssize_t Number of received bytes
  * 	EINVAL if buf is NULL, else returns status of recv() function
  */
-extern size_t buf_recv(buf_t *buf, const int socket, const buf_s64_t expected, const int flags);
+extern size_t buf_recv(/*@temp@*/ /*@in@*/ /*@special@*/buf_t *buf, const int socket, const buf_s64_t expected, const int flags);
 
 /* Additional defines */
 #ifdef BUF_DEBUG

@@ -1,7 +1,7 @@
 #ifndef _BUF_T_STRING_H_
 #define _BUF_T_STRING_H_
 
-extern ret_t buf_str_is_valid(buf_t *buf);
+extern ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -20,7 +20,7 @@ extern /*@null@*/ buf_t *buf_string(buf_s64_t size);
  * @param size_t size_without_0 Length of the string without terminating '\0'
  * @return buf_t* New buf_t containing the "str"
  */
-extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_s64_t size_without_0);
+extern /*@null@*/  buf_t *buf_from_string(/*@in@*//*@temp@*/char *str, const buf_s64_t size_without_0);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -34,7 +34,7 @@ extern /*@null@*/ buf_t *buf_from_string(/*@null@*/char *str, const buf_s64_t si
  * @return ret_t 
  * @details 
  */
-extern ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, const buf_s64_t size);
+extern ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *new_data, const buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -46,7 +46,7 @@ extern ret_t buf_str_add(/*@null@*/buf_t *buf, /*@null@*/const char *new_data, c
  * @return ret_t OK on success, 
  * @details 
  */
-extern ret_t buf_str_detect_used(/*@null@*/buf_t *buf);
+extern ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -58,7 +58,7 @@ extern ret_t buf_str_detect_used(/*@null@*/buf_t *buf);
  * @return ret_t OK on success, not OK on a failure 
  * @details 
  */
-extern ret_t buf_str_pack(/*@null@*/buf_t *buf);
+extern ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (02/06/2020)
@@ -67,7 +67,7 @@ extern ret_t buf_str_pack(/*@null@*/buf_t *buf);
  * @param char * format Format (like in printf first argument )
  * @return buf_t*
  */
-extern /*@null@*/ buf_t *buf_sprintf(const char *format, ...);
+extern /*@null@*/ buf_t *buf_sprintf(/*@in@*//*@temp@*/const char *format, ...);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -81,5 +81,5 @@ extern /*@null@*/ buf_t *buf_sprintf(const char *format, ...);
  *  	   BAD if a buffer is not the string buffer
  * @details 
  */
-extern ret_t buf_str_concat(buf_t *dst, buf_t *src);
+extern ret_t buf_str_concat(/*@in@*//*@temp@*/buf_t *dst, /*@in@*//*@temp@*/buf_t *src);
 #endif /* _BUF_T_STRING_H_ */

@@ -1,7 +1,8 @@
-GCC=gcc
+#GCC=gcc
+GCC=gcc-10
 AR=ar
 #GCC=clang-10
-CFLAGS=-Wall -Wextra -rdynamic -O2
+CFLAGS=-Wall -Wextra -Wpedantic -rdynamic -O2
 DEBUG=-DDEBUG2
 #DEBUG=-DDEBUG3
 #DEBUG += -DDERROR3
@@ -13,12 +14,13 @@ DEBUG=-DDEBUG2
 
 # client daemon
 
-BUF_O=buf_t.o buf_t_string.o buf_t_memory.o buf_t_stats.o
+BUF_O=buf_t_array.o buf_t.o buf_t_string.o buf_t_memory.o buf_t_stats.o
 BUF_A=buf_t.a
 BUF_TEST=btest.out
+BUF_FUZZER=bfuzzer.out
 
 # Files to check with splint
-SPLINT_C=buf_t.c buf_t.h buf_t_memory.c buf_t_memory.h buf_t_debug.h
+SPLINT_C=buf_t_array.c buf_t.c buf_t.h buf_t_memory.c buf_t_memory.h buf_t_debug.h
 
 all: buf
 	@echo "Version = $(GCCVERSION)"
@@ -36,8 +38,11 @@ btest: $(BUF_O)
 btest_a: buf
 	$(GCC) $(CFLAGS) -ggdb $(DEBUG) buf_t_test.c $(BUF_A) -o $(BUF_TEST)
 
+bfuzz: buf
+	$(GCC) $(CFLAGS) -ggdb $(DEBUG) buf_t_fuzzer.c $(BUF_A) -o $(BUF_FUZZER)
+
 clean:
-	rm -f *.o $(BUF_A) $(BUF_TEST) 
+	rm -f *.o $(BUF_A) $(BUF_TEST) $(BUF_FUZZER)
 
 
 .PHONY:check

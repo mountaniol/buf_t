@@ -6,29 +6,30 @@
 
 #include "buf_t.h"
 #include "buf_t_string.h"
+#include "buf_t_array.h"
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 
-int verbose = 0;
+int verbose = 1;
 
 #define PRINT(fmt, ...) do{if(verbose > 0){printf("%s +%d : ", __func__, __LINE__); printf(fmt, ##__VA_ARGS__);} }while(0 == 1)
 #define PSPLITTER()  do{if(verbose > 0)printf("+++++++++++++++++++++++++++++++++++++++++++++++\n\n");} while(0)
 #define PSPLITTER2()  do{if(verbose > 0) printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");} while(0)
-#define PSTART(x)     do{if(verbose > 0) printf("Beginning:   [%s]\n", x);} while(0)
-#define PSTEP(x)      do{if(verbose > 0) printf("Passed step: [%s] +%d\n", x, __LINE__);} while(0)
-#define PSUCCESS(x) do{PSPLITTER2();printf("PASS:        [%s]\n", x);} while(0)
-#define PFAIL(x)   do{PSPLITTER2(); printf("FAIL:        [%s] [line +%d]\n", x, __LINE__);} while(0)
+#define PSTART(x, num)     do{if(verbose > 0) printf("Beginning:   [%s] / test # %.3d\n", x, num);} while(0)
+#define PSTEP(x)      do{if(verbose > 0) printf("Passed step: [%s] +%.3d\n", x, __LINE__);} while(0)
+#define PSUCCESS(x, num) do{PSPLITTER2();printf("PASS:        [%s] / test # %.3d\n", x, num);} while(0)
+#define PFAIL(x, num)   do{PSPLITTER2(); printf("FAIL:        [%s] / test # %.3d [line +%d]\n", x, num, __LINE__);} while(0)
 
 /* Create buffer with 0 size data */
-void test_buf_new_zero_size(void)
+void test_buf_new_zero_size(int test_num)
 {
 	buf_t *buf = NULL;
 	PSPLITTER();
 
-	PSTART("allocate 0 size buffer");
+	PSTART("allocate 0 size buffer", test_num);
 	buf = buf_new(0);
 	if (NULL == buf) {
-		PFAIL("Cant allocate 0 size buf");
+		PFAIL("Cant allocate 0 size buf", test_num);
 		abort();
 	}
 
@@ -36,7 +37,7 @@ void test_buf_new_zero_size(void)
 
 	if (buf_used(buf) != 0 || buf_room(buf) != 0) {
 		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_used(buf), buf_room(buf));
-		PFAIL("0 size buffer");
+		PFAIL("0 size buffer", test_num);
 		abort();
 	}
 
@@ -45,35 +46,35 @@ void test_buf_new_zero_size(void)
 	//if (buf->data != NULL) {
 	if (buf_data_is_null(buf) == NO) {
 		printf("0 size buffer: data != NULL (%p)\n", buf_data(buf));
-		PFAIL("0 size buffer");
+		PFAIL("0 size buffer", test_num);
 		abort();
 	}
 
 	PSTEP("Tested: buf->data == NULL");
 
 	if (OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer");
+		PFAIL("Can not free the buffer", test_num);
 		abort();
 	}
 	PSTEP("Released buf");
-	PSUCCESS("allocate 0 size buffer");
+	PSUCCESS("allocate 0 size buffer", test_num);
 }
 
 /* Create buffers with increasing size */
-void test_buf_new_increasing_size(void)
+void test_buf_new_increasing_size(int test_num)
 {
 	buf_t    *buf = NULL;
 	uint64_t size = 64;
 	int      i;
 	PSPLITTER();
 
-	PSTART("increasing size buffer");
+	PSTART("increasing buffer internal size", test_num);
 	for (i = 1; i < 16; i++) {
 		size = size << 1;
 
 		buf = buf_new(size);
 		if (NULL == buf) {
-			PFAIL("increasing size buffer");
+			PFAIL("increasing size buffer", test_num);
 			/*@ignore@*/
 			printf("Tried to allocate: %zu size\n", size);
 			/*@end@*/
@@ -84,7 +85,7 @@ void test_buf_new_increasing_size(void)
 			/*@ignore@*/
 			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_used(buf), buf_room(buf), size);
 			/*@end@*/
-			PFAIL("increasing size buffer");
+			PFAIL("increasing size buffer", test_num);
 			abort();
 		}
 
@@ -93,12 +94,12 @@ void test_buf_new_increasing_size(void)
 			/*@ignore@*/
 			printf("increasing size buffer: data == NULL (%p), asked size: %zu, iteration: %d\n", buf_data(buf), size, i);
 			/*@end@*/
-			PFAIL("increasing size buffer");
+			PFAIL("increasing size buffer", test_num);
 			abort();
 		}
 
 		if (OK != buf_free(buf)) {
-			PFAIL("Can not free the buffer");
+			PFAIL("Can not free the buffer", test_num);
 			abort();
 		}
 	}
@@ -107,10 +108,10 @@ void test_buf_new_increasing_size(void)
 	PRINT("[Allocated up to %zu bytes buffer]\n", size);
 	/*@end@*/
 
-	PSUCCESS("increasing size buffer");
+	PSUCCESS("increasing size buffer", test_num);
 }
 
-void test_buf_string(size_t buffer_init_size)
+void test_buf_string(size_t buffer_init_size, int test_num)
 {
 	buf_t      *buf  = NULL;
 	const char *str  = "Jabala Labala Hoom";
@@ -118,7 +119,8 @@ void test_buf_string(size_t buffer_init_size)
 
 	PSPLITTER();
 
-	PSTART("buf_string");
+	PSTART("buf_string", test_num);
+	PRINT("Testing buffer init size: %zu\n", buffer_init_size);
 
 	/*@ignore@*/
 	PRINT("[Asked string size: %zu]\n", buffer_init_size);
@@ -126,14 +128,14 @@ void test_buf_string(size_t buffer_init_size)
 
 	buf = buf_string(buffer_init_size);
 	if (NULL == buf) {
-		PFAIL("buf_string: Can't allocate buf");
+		PFAIL("buf_string: Can't allocate buf", test_num);
 		abort();
 	}
 
 	PSTEP("Allocated buffer");
 
 	if (OK != buf_add(buf, str, strlen(str))) {
-		PFAIL("buf_string: can't add");
+		PFAIL("buf_string: can't add", test_num);
 		abort();
 	}
 
@@ -144,7 +146,7 @@ void test_buf_string(size_t buffer_init_size)
 		printf("[After buf_add: wrong buf->used or buf->room]\n");
 		printf("[buf->used = %d, buf->room = %d]\n", buf->used, buf->room);
 		printf("[bif->used should be = (buf->room - 1)]\n");
-		PFAIL("buf_string failed");
+		PFAIL("buf_string failed", test_num);
 		abort();
 	}
 #endif
@@ -157,7 +159,7 @@ void test_buf_string(size_t buffer_init_size)
 		//printf("[buf->data len = %zu]\n", strlen(buf->data));
 		printf("[buf->data len = %zu]\n", strlen(buf_data(buf)));
 		/*@end@*/
-		PFAIL("buf_string");
+		PFAIL("buf_string", test_num);
 		abort();
 	}
 
@@ -170,7 +172,7 @@ void test_buf_string(size_t buffer_init_size)
 
 	if (OK != buf_add(buf, str2, strlen(str2))) {
 		printf("[Can't add string into buf]\n");
-		PFAIL("buf_string");
+		PFAIL("buf_string", test_num);
 		abort();
 	}
 
@@ -183,7 +185,7 @@ void test_buf_string(size_t buffer_init_size)
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		/*@end@*/
 
-		PFAIL("buf_string");
+		PFAIL("buf_string", test_num);
 		abort();
 	}
 
@@ -194,26 +196,26 @@ void test_buf_string(size_t buffer_init_size)
 		//printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf->data), strlen(str) + strlen(str2));
 		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf_data(buf)), strlen(str) + strlen(str2));
 		//printf("[String is: |%s|, added strings: |%s%s|]\n", buf->data, str, str2);
-		printf("[String is: |%s|, added strings: |%s%s|]\n", (char *) buf_data(buf), str, str2);
+		printf("[String is: |%s|, added strings: |%s%s|]\n", (char *)buf_data(buf), str, str2);
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		/*@end@*/
-		PFAIL("buf_string");
+		PFAIL("buf_string", test_num);
 		abort();
 	}
 
 	//printf("%s\n", buf->data);
 	if (OK != buf_free(buf)) {
-		PFAIL("buf_string: Can not free the buffer");
+		PFAIL("buf_string: Can not free the buffer", test_num);
 		abort();
 	}
 
-	PSUCCESS("buf_string");
+	PSUCCESS("buf_string", test_num);
 }
 
 /* Allocate string buffer. Add several strings. Pack it. Test that after the packing the buf is
    correct. Test that the string in the buffer is correct. */
-void test_buf_pack_string(void)
+void test_buf_pack_string(int test_num)
 {
 	buf_t      *buf     = NULL;
 	const char *str     = "Jabala Labala Hoom";
@@ -225,11 +227,11 @@ void test_buf_pack_string(void)
 
 	PSPLITTER();
 
-	PSTART("buf_pack_string");
+	PSTART("buf_pack_string", test_num);
 
 	buf = buf_string(1024);
 	if (NULL == buf) {
-		PFAIL("buf_string: Can't allocate buf");
+		PFAIL("buf_string: Can't allocate buf", test_num);
 		abort();
 	}
 
@@ -238,7 +240,7 @@ void test_buf_pack_string(void)
 	len = strlen(str);
 
 	if (OK != buf_add(buf, str, len)) {
-		PFAIL("buf_pack_string: can't add");
+		PFAIL("buf_pack_string: can't add", test_num);
 		abort();
 	}
 
@@ -246,7 +248,7 @@ void test_buf_pack_string(void)
 
 	//if (strlen(buf->data) != strlen(str)) {
 	if (strlen(buf_data(buf)) != strlen(str)) {
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
@@ -256,38 +258,38 @@ void test_buf_pack_string(void)
 	len2 = strlen(str2);
 	if (OK != buf_add(buf, str2, len2)) {
 		printf("[Can't add string into buf]\n");
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	if (buf_used(buf) != (len + len2)) {
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	//if ((buf_s64_t)strlen(buf->data) != (len + len2)) {
 	if ((buf_s64_t)strlen(buf_data(buf)) != (len + len2)) {
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	/* Now we pack the buf */
 	if (OK != buf_pack(buf)) {
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	/* Test that the packed buffer has the right size */
 	if (buf_used(buf) != (len + len2)) {
 		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_used(buf), (len + len2));
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	/* Test that buf->room = buf->used + 1 */
 	if (buf_used(buf) != buf_room(buf) - 1) {
 		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_used(buf), buf_room(buf));
-		PFAIL("buf_pack_string");
+		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
@@ -300,28 +302,28 @@ void test_buf_pack_string(void)
 	memset(con_str, 0, len + len2 + 1);
 	rc = snprintf(con_str, len + len2 + 1, "%s%s", str, str2);
 	if (rc != len + len2) {
-		PFAIL("snprintf failed (this is very strange!)");
+		PFAIL("snprintf failed (this is very strange!)", test_num);
 		abort();
 	}
 
 	//if (0 != strcmp(buf->data, con_str)) {
 	if (0 != strcmp(buf_data(buf), con_str)) {
-		PFAIL("buf_pack_string: Strings are differ");
+		PFAIL("buf_pack_string: Strings are differ", test_num);
 		abort();
 	}
 	//printf("%s\n", buf_data(buf));
 	if (OK != buf_free(buf)) {
-		PFAIL("buf_pack_string: Can npt free the buffer");
+		PFAIL("buf_pack_string: Can npt free the buffer", test_num);
 		abort();
 	}
 	free(con_str);
 
-	PSUCCESS("buf_pack_string");
+	PSUCCESS("buf_pack_string", test_num);
 }
 
 /* Allocate string buffer. Add several strings. Pack it. Test that after the packing the buf is
    correct. Test that the string in the buffer is correct. */
-void test_buf_str_concat(void)
+void test_buf_str_concat(int test_num)
 {
 	buf_t      *buf1    = NULL;
 	buf_t      *buf2    = NULL;
@@ -338,21 +340,21 @@ void test_buf_str_concat(void)
 
 	PSPLITTER();
 
-	PSTART("buf_str_concat");
+	PSTART("buf_str_concat", test_num);
 
 	buf1 = buf_string(0);
 	if (NULL == buf1) {
-		PFAIL("buf_str_concat: Can't allocate buf1");
+		PFAIL("buf_str_concat: Can't allocate buf1", test_num);
 		abort();
 	}
 
 	if (OK != buf_add(buf1, str1, len1)) {
-		PFAIL("buf_str_concat: Can't add string into buf2");
+		PFAIL("buf_str_concat: Can't add string into buf2", test_num);
 		abort();
 	}
 
 	if (OK != buf_is_string(buf1)) {
-		PFAIL("buf_str_concat: buf1 is not a string buffer");
+		PFAIL("buf_str_concat: buf1 is not a string buffer", test_num);
 		abort();
 	}
 
@@ -360,24 +362,24 @@ void test_buf_str_concat(void)
 
 	buf2 = buf_string(0);
 	if (NULL == buf2) {
-		PFAIL("buf_str_concat: Can't allocate buf2");
+		PFAIL("buf_str_concat: Can't allocate buf2", test_num);
 		abort();
 	}
 
 	if (OK != buf_add(buf2, str2, len2)) {
-		PFAIL("buf_str_concat: Can't add string into buf2");
+		PFAIL("buf_str_concat: Can't add string into buf2", test_num);
 		abort();
 	}
 
 	if (OK != buf_is_string(buf2)) {
-		PFAIL("buf_str_concat: buf2 is not a string buffer");
+		PFAIL("buf_str_concat: buf2 is not a string buffer", test_num);
 		abort();
 	}
 
 	PSTEP("Allocated buf2");
 
 	if (OK != buf_str_concat(buf1, buf2)) {
-		PFAIL("buf_str_concat: buf_str_concat returned an error");
+		PFAIL("buf_str_concat: buf_str_concat returned an error", test_num);
 		abort();
 	}
 
@@ -385,7 +387,7 @@ void test_buf_str_concat(void)
 
 	//if ((buf_s64_t)strlen(buf1->data) != (len1 + len2)) {
 	if ((buf_s64_t)strlen(buf_data(buf1)) != (len1 + len2)) {
-		PFAIL("buf_str_concat: bad length");
+		PFAIL("buf_str_concat: bad length", test_num);
 		abort();
 	}
 
@@ -394,7 +396,7 @@ void test_buf_str_concat(void)
 	/* Test that the packed buffer has the right size */
 	if (buf_used(buf1) != (len1 + len2)) {
 		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_used(buf1), (len1 + len2));
-		PFAIL("buf_str_concat: wrong buf_used()");
+		PFAIL("buf_str_concat: wrong buf_used()", test_num);
 		abort();
 	}
 
@@ -403,7 +405,7 @@ void test_buf_str_concat(void)
 	/* Test that buf->room = buf->used + 1 */
 	if (buf_used(buf1) != buf_room(buf1) - 1) {
 		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_used(buf1), buf_room(buf1));
-		PFAIL("buf_str_concat: buf_used(buf1) != buf_room(buf1) - 1");
+		PFAIL("buf_str_concat: buf_used(buf1) != buf_room(buf1) - 1", test_num);
 		abort();
 	}
 
@@ -411,41 +413,41 @@ void test_buf_str_concat(void)
 
 	con_str = malloc(len1 + len2 + 1);
 	if (NULL == con_str) {
-		PFAIL("buf_str_concat: can't allocate memory\n");
+		PFAIL("buf_str_concat: can't allocate memory\n", test_num);
 		abort();
 	}
 
 	memset(con_str, 0, len1 + len2 + 1);
 	rc = snprintf(con_str, len1 + len2 + 1, "%s%s", str1, str2);
 	if (rc != len1 + len2) {
-		PFAIL("snprintf failed (this is very strange!)");
+		PFAIL("snprintf failed (this is very strange!)", test_num);
 		abort();
 	}
 
 	//if (0 != strcmp(buf1->data, con_str)) {
 	if (0 != strcmp(buf_data(buf1), con_str)) {
-		PFAIL("buf_str_concat: string is not the same");
+		PFAIL("buf_str_concat: string is not the same", test_num);
 		abort();
 	}
 
 	PSTEP("strings compared OK");
 
 	if (OK != buf_free(buf1)) {
-		PFAIL("buf_str_concat: can't free buf1");
+		PFAIL("buf_str_concat: can't free buf1", test_num);
 		abort();
 	}
 
 	if (OK != buf_free(buf2)) {
-		PFAIL("buf_str_concat: can't free buf2");
+		PFAIL("buf_str_concat: can't free buf2", test_num);
 		abort();
 	}
 
 	free(con_str);
 
-	PSUCCESS("buf_str_concat");
+	PSUCCESS("buf_str_concat", test_num);
 }
 
-void test_buf_pack(void)
+void test_buf_pack(int test_num)
 {
 	/*@only@*/ buf_t     *buf          = NULL;
 	/*@only@*/ char      *_buf_data     = NULL;
@@ -456,11 +458,11 @@ void test_buf_pack(void)
 
 	PSPLITTER();
 
-	PSTART("buf_pack");
+	PSTART("buf_pack", test_num);
 
 	buf = buf_new(1024);
 	if (NULL == buf) {
-		PFAIL("buf_string: Can't allocate buf");
+		PFAIL("buf_string: Can't allocate buf", test_num);
 		abort();
 	}
 
@@ -468,7 +470,7 @@ void test_buf_pack(void)
 
 	_buf_data = malloc(256);
 	if (NULL == _buf_data) {
-		PFAIL("Can't allocate buffer");
+		PFAIL("Can't allocate buffer", test_num);
 		abort();
 	}
 
@@ -488,22 +490,22 @@ void test_buf_pack(void)
 	//buf_data[buf_data_size - 1] = 9;
 
 	if (OK != buf_add(buf, _buf_data, buf_data_size)) {
-		PFAIL("buf_pack: can't add");
+		PFAIL("buf_pack: can't add", test_num);
 		abort();
 	}
 
 	PSTEP("Added buffer into buf_t");
 
 	if (buf_used(buf) != buf_data_size) {
-		PFAIL("buf_pack");
+		PFAIL("buf_pack", test_num);
 		abort();
 	}
 
 	/* Compare memory */
 	//if (0 != memcmp(buf->data, buf_data, buf_data_size)) {
-	
+
 	if (0 != memcmp(buf_data(buf), _buf_data, buf_data_size)) {
-		PFAIL("buf_pack");
+		PFAIL("buf_pack", test_num);
 		abort();
 	}
 
@@ -511,14 +513,14 @@ void test_buf_pack(void)
 
 	/* Now we pack the buf */
 	if (OK != buf_pack(buf)) {
-		PFAIL("buf_pack");
+		PFAIL("buf_pack", test_num);
 		abort();
 	}
 	PSTEP("Packed buf_t");
 
 	/* Test that the packed buffer has the right size */
 	if (buf_used(buf) != buf_data_size) {
-		PFAIL("buf_pack");
+		PFAIL("buf_pack", test_num);
 		abort();
 	}
 	PSTEP("That buf->used is right");
@@ -526,25 +528,25 @@ void test_buf_pack(void)
 	/* Test that buf->room = buf->used + 1 */
 	if (buf_used(buf) != buf_room(buf)) {
 		printf("buf->room (%ld) != buf->used (%ld)\n", buf_room(buf), buf_used(buf));
-		PFAIL("buf_pack");
+		PFAIL("buf_pack", test_num);
 		abort();
 	}
 	PSTEP("Tested room and used");
 
 	//printf("%s\n", buf->data);
 	if (OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer");
+		PFAIL("Can not free the buffer", test_num);
 		abort();
 	}
 	free(_buf_data);
 
-	PSUCCESS("buf_pack");
+	PSUCCESS("buf_pack", test_num);
 }
 
-void test_buf_canary(void)
+void test_buf_canary(int test_num)
 {
-	/*@only@*/ buf_t         *buf          = NULL;
-	/*@only@*/ char          *_buf_data     = NULL;
+	/*@notnull@*/ /*@only@*/  buf_t         *buf;
+	/*@only@*/ char          *_buf_data;
 	buf_s64_t     buf_data_size = 256;
 	buf_s64_t     i;
 	time_t        current_time  = time(0);
@@ -554,7 +556,7 @@ void test_buf_canary(void)
 
 	PSPLITTER();
 
-	PSTART("buf_canary");
+	PSTART("buf_canary", test_num);
 
 	/* We need to save and later restore flags: during this test we must unset the 'abort' flags */
 	flags = buf_save_flags();
@@ -562,12 +564,16 @@ void test_buf_canary(void)
 
 	buf = buf_new(0);
 	if (NULL == buf) {
-		PFAIL("buf_string: Can't allocate buf");
+		PFAIL("buf_string: Can't allocate buf", test_num);
 		abort();
 	}
 
 	if (OK != buf_mark_canary(buf)) {
-		PFAIL("buf_canary: Can't set CANARY flag");
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
+		PFAIL("buf_canary: Can't set CANARY flag", test_num);
 		abort();
 	}
 
@@ -575,7 +581,11 @@ void test_buf_canary(void)
 
 	_buf_data = malloc(256);
 	if (NULL == _buf_data) {
-		PFAIL("Can't allocate buffer");
+		PFAIL("Can't allocate buffer", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
@@ -591,21 +601,33 @@ void test_buf_canary(void)
 	PSTEP("Filled local buffer with random data");
 
 	if (OK != buf_add(buf, _buf_data, buf_data_size - 1)) {
-		PFAIL("buf_pack: can't add");
+		PFAIL("buf_pack: can't add", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
 	PSTEP("Added buffer into buf_t");
 
 	if (buf_used(buf) != buf_data_size - 1) {
-		PFAIL("buf_pack");
+		PFAIL("buf_pack", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
 	/* Compare memory */
 	//if (0 != memcmp(buf->data, buf_data, buf_data_size - 1)) {
 	if (0 != memcmp(buf_data(buf), _buf_data, buf_data_size - 1)) {
-		PFAIL("buf_canary: buffer is wrong");
+		PFAIL("buf_canary: buffer is wrong", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
@@ -613,7 +635,11 @@ void test_buf_canary(void)
 
 	/* Test canary */
 	if (OK != buf_test_canary(buf)) {
-		PFAIL("buf_canary: bad canary");
+		PFAIL("buf_canary: bad canary", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
@@ -621,13 +647,22 @@ void test_buf_canary(void)
 
 	/* Now we copy the full buffer into buf->data and such we break the canary pattern */
 	//memcpy(buf->data, buf_data, buf_data_size);
-	memcpy(buf_data(buf), _buf_data, buf_data_size);
+	if (NULL != buf_data(buf)) {
+		memcpy(buf_data(buf), _buf_data, buf_data_size);
+	} else {
+		PFAIL("buf_canary: buf_data(buf) is NULL - must be not", test_num);
+		abort();
+	}
 
 	PSTEP("Corrupted buf: we expect an ERR");
 
 	/* Test canary: we expect it to be wrong */
 	if (OK == buf_test_canary(buf)) {
-		PFAIL("buf_canary: good canary but must be bad");
+		PFAIL("buf_canary: good canary but must be bad", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
@@ -636,7 +671,11 @@ void test_buf_canary(void)
 	PSTEP("The canary is broken. It is what expected to be");
 
 	if (OK != buf_set_canary(buf)) {
-		PFAIL("buf_canary: can't set canary on the buffer");
+		PFAIL("buf_canary: can't set canary on the buffer", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
@@ -644,7 +683,11 @@ void test_buf_canary(void)
 
 	/* Test canary again */
 	if (OK != buf_test_canary(buf)) {
-		PFAIL("buf_canary: bad canary but must be good");
+		PFAIL("buf_canary: bad canary but must be good", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
@@ -652,14 +695,19 @@ void test_buf_canary(void)
 
 	/* Run buf validation */
 	if (OK != buf_is_valid(buf)) {
-		PFAIL("buf_canary: buffer is not valid");
+		PFAIL("buf_canary: buffer is not valid", test_num);
+		if (OK != buf_free(buf)) {
+			PRINT("Can't release buffer");
+			abort();
+		}
 		abort();
 	}
 
 	PSTEP("Buffer is valid");
 
 	if (OK != buf_free(buf)) {
-		PFAIL("buf_canary: buf_free returned not OK");
+		PFAIL("buf_canary: buf_free returned not OK", test_num);
+		free(_buf_data);
 		abort();
 	}
 
@@ -669,7 +717,234 @@ void test_buf_canary(void)
 
 	buf_restore_flags(flags);
 
-	PSUCCESS("buf_canary");
+	PSUCCESS("buf_canary", test_num);
+}
+
+/*** Test ARRAY buf ****/
+
+void test_buf_array_zero_size(int test_num)
+{
+	buf_t *buf = NULL;
+	PSPLITTER();
+
+	PSTART("allocate 0 size array buffer", test_num);
+	buf = buf_array(0, 0);
+	if (NULL == buf) {
+		PFAIL("Cant allocate 0 size buf array", test_num);
+		abort();
+	}
+
+	PSTEP("Buffer array allocated with 0 room size");
+
+	if (buf_used(buf) != 0 || buf_room(buf) != 0) {
+		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_used(buf), buf_room(buf));
+		PFAIL("0 size buffer", test_num);
+		abort();
+	}
+
+	PSTEP("Tested: buf->used == 0 and buf->room == 0");
+
+	//if (buf->data != NULL) {
+	if (buf_data_is_null(buf) == NO) {
+		printf("0 size buffer: data != NULL (%p)\n", buf_data(buf));
+		PFAIL("0 size buffer", test_num);
+		abort();
+	}
+
+	PSTEP("Tested: buf->data == NULL");
+
+	if (OK != buf_free(buf)) {
+		PFAIL("Can not free the buffer", test_num);
+		abort();
+	}
+	PSTEP("Released buf");
+	PSUCCESS("allocate 0 size buffer", test_num);
+}
+
+void test_buf_array_allocate_with_size(int test_num, int element_size, int num_of_elements)
+{
+	buf_t *buf = NULL;
+	PSPLITTER();
+
+	PSTART("allocate array buffer with size", test_num);
+	buf = buf_array(element_size, num_of_elements);
+	if (NULL == buf) {
+		PFAIL("Cant allocate buf array", test_num);
+		abort();
+	}
+
+	PSTEP("Buffer array allocated with 0 room size");
+
+	int memory_to_expect = element_size * num_of_elements;
+
+	if (buf_used(buf) != 0) {
+		printf("Arr buffer: used expected 0, but it is (%ld)\n",
+			   buf_used(buf));
+		PFAIL("Arr buffer, used is wrong", test_num);
+		abort();
+	}
+
+	if (buf_room(buf) != memory_to_expect) {
+		printf("Arr buffer: oom (%ld), expected (%d)\n",
+			   buf_room(buf), memory_to_expect);
+		PFAIL("Arr size buffer, room is worng", test_num);
+		abort();
+	}
+
+	if (buf->arr.members != 0) {
+		printf("Arr size buffer: buf->arr.members (%d) != 0 as expected\n",
+			   buf->arr.members);
+		PFAIL("Array buffer: buf->arr.members != 0", test_num);
+		abort();
+	}
+
+	if (buf->arr.size != element_size) {
+		printf("Arr size buffer: buf->arr.size != element_size (%d) != (%d)\n",
+			   buf->arr.size, element_size);
+		PFAIL("Array buffer: buf->arr.size", test_num);
+		abort();
+	}
+
+	PSTEP("Tested: buf->arr.size, buf->arr.members");
+
+	//if (buf->data != NULL) {
+	if (buf_data_is_null(buf) == YES) {
+		printf("Array size buffer: data == NULL (%p)\n", buf_data(buf));
+		PFAIL("Array buffer, buf_data_is_null(buf) == YES", test_num);
+		abort();
+	}
+
+	PSTEP("Tested: buf->data != NULL");
+
+	if (OK != buf_free(buf)) {
+		PFAIL("Can not free the buffer", test_num);
+		abort();
+	}
+	PSTEP("Released buf");
+	PSUCCESS("Allocate array buffer", test_num);
+}
+
+void test_buf_array_allocate_add(int test_num, int num_of_elements)
+{
+	buf_t *buf = NULL;
+	PSPLITTER();
+
+	PSTART("Add members to the array buffer", test_num);
+	buf = buf_array(sizeof(int), num_of_elements);
+	if (NULL == buf) {
+		PFAIL("Cant allocate buf array", test_num);
+		abort();
+	}
+
+	PSTEP("Buffer array allocated");
+
+	/* Add element to buffer up to num_of_elements*/
+	int counter;
+
+	for (counter = 0; counter < num_of_elements; counter++) {
+		ret_t rc = buf_arr_add(buf, &counter);
+		if (OK != rc) {
+			printf("Failed to add an element, counter = %d\n",counter);
+			PFAIL("Array buffer, adding member", test_num);
+		}
+	}
+
+	PSTEP("Added memebers");
+
+	if (buf_data_is_null(buf) == YES) {
+		printf("Array size buffer: data == NULL (%p)\n", buf_data(buf));
+		PFAIL("Array buffer, buf_data_is_null(buf) == YES", test_num);
+		abort();
+	}
+
+	PSTEP("buf->data != NULL");
+
+	if (buf_arr_members(buf) != num_of_elements) {
+		printf("Array size buffer: number of members is (%d), expected (%d)\n",
+			   buf_arr_members(buf), num_of_elements);
+		PFAIL("Array buffer, wrong number of elements", test_num);
+		abort();
+	}
+
+	PSTEP("Tested: buf_arr_members(buf) == num_of_elements");
+
+	if (OK != buf_free(buf)) {
+		PFAIL("Can not free the buffer", test_num);
+		abort();
+	}
+	PSTEP("Released buf");
+	PSUCCESS("Add members to the array buffer", test_num);
+}
+
+void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
+{
+	buf_t *buf = NULL;
+	PSPLITTER();
+
+	PSTART("Add and remove members to the array buffer", test_num);
+	buf = buf_array(sizeof(int), num_of_elements);
+	if (NULL == buf) {
+		PFAIL("Cant allocate buf array", test_num);
+		abort();
+	}
+
+	PSTEP("Buffer array allocated");
+
+	/* Add element to buffer up to num_of_elements*/
+	int counter;
+
+	for (counter = 0; counter < num_of_elements; counter++) {
+		ret_t rc = buf_arr_add(buf, &counter);
+		if (OK != rc) {
+			printf("Failed to add an element, counter = %d\n",counter);
+			PFAIL("Array buffer, adding member", test_num);
+		}
+	}
+
+	PSTEP("Added memebers");
+
+	if (buf_data_is_null(buf) == YES) {
+		printf("Array size buffer: data == NULL (%p)\n", buf_data(buf));
+		PFAIL("Array buffer, buf_data_is_null(buf) == YES", test_num);
+		abort();
+	}
+
+	PSTEP("buf->data != NULL");
+
+	if (buf_arr_members(buf) != num_of_elements) {
+		printf("Array size buffer: number of members is (%d), expected (%d)\n",
+			   buf_arr_members(buf), num_of_elements);
+		PFAIL("Array buffer, wrong number of elements", test_num);
+		abort();
+	}
+
+	PSTEP("Tested: buf_arr_members(buf) == num_of_elements");
+
+	/* Remove element by element */
+
+	for (counter = 0; counter < num_of_elements; counter++) {
+		ret_t rc = buf_arr_rm(buf, 0);
+		if (OK != rc) {
+			printf("Failed to remove 0 element, counter = %d\n",counter);
+			PFAIL("Array buffer, removing member", test_num);
+		}
+
+		/* Number of elements must be decreased by counter */
+		if (buf_arr_members(buf) != num_of_elements - counter - 1) {
+			printf("After removing %d element count of elements expected %d but it is %d\n",
+				   counter + 1, num_of_elements - counter - 1, buf_arr_members(buf));
+			PFAIL("Array buffer, removing member", test_num);
+		}
+	}
+
+	PSTEP("Tested: removed all members");
+
+	if (OK != buf_free(buf)) {
+		PFAIL("Can not free the buffer", test_num);
+		abort();
+	}
+	PSTEP("Released buf");
+	PSUCCESS("Add and remove members to the array buffer", test_num);
 }
 
 int main(void)
@@ -681,18 +956,31 @@ int main(void)
 	//DDE("This is extended error print\n");
 
 	buf_set_abort_flag();
-	test_buf_new_zero_size();
-	test_buf_new_increasing_size();
-	test_buf_string(0);
-	test_buf_string(1);
-	test_buf_string(32);
-	test_buf_string(1024);
-	test_buf_pack_string();
-	test_buf_str_concat();
-	test_buf_pack();
-	test_buf_canary();
+	test_buf_new_zero_size(1);
+	test_buf_new_increasing_size(1);
+	test_buf_string(0, 1);
+	test_buf_string(1, 2);
+	test_buf_string(32, 3);
+	test_buf_string(1024, 4);
+	test_buf_pack_string(1);
+	test_buf_str_concat(1);
+	test_buf_pack(1);
+	test_buf_canary(1);
+	test_buf_array_zero_size(1);
+	test_buf_array_allocate_with_size(1, 1, 4);
+	test_buf_array_allocate_with_size(2, 100, 4);
+	test_buf_array_allocate_with_size(3, 1, 8);
+	test_buf_array_allocate_with_size(4, 100, 8);
 
-	PSUCCESS("All tests passed, good work!");
+	test_buf_array_allocate_add(1, 1);
+	test_buf_array_allocate_add(2, 10);
+	test_buf_array_allocate_add(3, 1000);
+
+	test_buf_array_allocate_add_remove(1, 1);
+	test_buf_array_allocate_add_remove(2, 10);
+	test_buf_array_allocate_add_remove(3, 1000);
+
+	PSUCCESS("All tests passed, good work!", 0);
 	buf_t_stats_print();
 	return (0);
 }
