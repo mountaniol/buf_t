@@ -687,7 +687,7 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 	T_RET_ABORT(buf, -EINVAL);
 
 	if (0 == size) {
-		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", buf, size);
+		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", (void *) buf, size);
 		TRY_ABORT();
 		return (-EINVAL);
 	}
@@ -828,7 +828,7 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	TESTP_ASSERT(new_data, "buf is NULL");
 	if (size < 1) {
 		/*@ignore@*/
-		DE("Wrong argument(s): b = %p, buf = %p, size = %lu\n", buf, new_data, size);
+		DE("Wrong argument(s): b = %p, buf = %p, size = %lu\n", (void *)buf, (void *)new_data, size);
 		/*@end@*/
 		TRY_ABORT();
 		return (-EINVAL);

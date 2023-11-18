@@ -244,8 +244,8 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 {
 	buf_s64_t offset;
 
-	T_RET_ABORT(buf, NULL);
-	T_RET_ABORT(new_data_ptr, NULL);
+	T_RET_ABORT(buf, -ECANCELED);
+	T_RET_ABORT(new_data_ptr, -ECANCELED);
 
 	/* Number of element to copy must be > 0 value */
 	if (num_of_new_members < 1) {

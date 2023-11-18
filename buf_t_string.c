@@ -135,7 +135,9 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 
 	/* All done, now add new data into the buffer */
 	/*@ignore@*/
-	memcpy(buf_data(buf) + buf_used(buf), new_data, size);
+	char * memory_to_copy = buf_data(buf);
+	memory_to_copy += buf_used(buf);
+	memcpy(memory_to_copy, new_data, size);
 	/*@end@*/
 	if (OK != buf_inc_used(buf, size)) {
 		DE("Can not increase 'used'\n");

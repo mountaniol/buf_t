@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include "buf_t_types.h"
 #include "buf_t_structs.h"
+#include "se_debug.h"
+#include "se_tests.h"
 //#define BUF_DEBUG
 #define BUF_NOISY
 
@@ -16,13 +18,13 @@
 /* For err_t */
 //#include "mp-common.h"
 
-#define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
-#define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
+// #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
+// #define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
 
 /* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
 extern int bug_get_abort_flag(void);
-//#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
-#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
+#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+//#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
 
 #ifdef TFREE_SIZE
 	#undef TFREE_SIZE
@@ -718,7 +720,8 @@ extern size_t buf_recv(/*@temp@*/ /*@in@*/ /*@special@*/buf_t *buf, const int so
  * @param const char* filename Full name of file to load into
  *  			buf_t
  * @return buf_t* Buffer containin the contentof the file
- * @details 
+ * @details The type of buf_t is not set. The user should decide
+ *  		either they want to set it or not.
  */
 extern buf_t *buf_from_file(const char *filename);
 
