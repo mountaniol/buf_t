@@ -712,6 +712,31 @@ extern ret_t buf_detect_used(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
  */
 extern size_t buf_recv(/*@temp@*/ /*@in@*/ /*@special@*/buf_t *buf, const int socket, const buf_s64_t expected, const int flags);
 
+/**
+ * @author Sebastian Mountaniol (11/18/23)
+ * @brief Load content of the file into buf_t
+ * @param const char* filename Full name of file to load into
+ *  			buf_t
+ * @return buf_t* Buffer containin the contentof the file
+ * @details 
+ */
+extern buf_t *buf_from_file(const char *filename);
+
+/**
+ * @author Sebastian Mountaniol (11/18/23)
+ * @brief Save content of the buffer to the givel file
+ * @param buf_t* buf   Buffer to save
+ * @param buf_t* file  Buffer containing name of the file to
+ *  		   save tje buffer
+ * @param mode_t mode  Mode of the file; after the file created
+ *  			 and content of the buf_t is saved,
+ *  			 this function will change the file permission
+ *  			 accordingly to the given 'mode'
+ * @return int OK on success, a negative value on an error
+ * @details See 'man fchmod' for mode_t format
+ */
+extern int buf_to_file(buf_t *buf, buf_t *file, mode_t mode);
+
 /* Additional defines */
 #ifdef BUF_DEBUG
 
