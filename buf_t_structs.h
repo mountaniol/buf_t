@@ -53,5 +53,6 @@ struct buf_t_struct {
 };
 #endif
 
+typedef /*@abstract@*/ struct buf_t_struct buf_t;
 
 #endif /* _BUF_T_STRUCTS_H__ */

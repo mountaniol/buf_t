@@ -26,11 +26,11 @@ int test_buf_strpack(char *data, size_t size)
 
 	data1 = malloc(size);
 	memcpy(data1, data, size);
-	if (OK != buf_set_data(buf, data1, size, size)) {
+	if (BUFT_OK != buf_set_data(buf, data1, size, size)) {
 		goto err1;
 	}
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err1;
 	}
 
@@ -41,27 +41,27 @@ int test_buf_strpack(char *data, size_t size)
 
 	data2 = malloc(size);
 	memcpy(data2, data, size);
-	if (OK != buf_set_data(buf2, data2, size, size)) {
+	if (BUFT_OK != buf_set_data(buf2, data2, size, size)) {
 		goto err2;
 	}
 
-	if (OK != buf_is_valid(buf2)) {
+	if (BUFT_OK != buf_is_valid(buf2)) {
 		goto err2;
 	}
 
 	buf_str_concat(buf, buf2);
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err2;
 	}
 
 	buf_str_pack(buf);
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err2;
 	}
 
 	buf_str_pack(buf2);
-	if (OK != buf_free(buf2)) {
+	if (BUFT_OK != buf_free(buf2)) {
 		goto err2;
 	}
 
@@ -85,7 +85,7 @@ int   test_buf_sprintf(char *data, size_t size)
 		return 1;
 	}
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err1;
 	}
 
@@ -111,11 +111,11 @@ int   test_buf_string(char *data, size_t size)
 
 	data1 = malloc(size);
 	memcpy(data1, data, size);
-	if (OK != buf_set_data(buf, data1, size, size)) {
+	if (BUFT_OK != buf_set_data(buf, data1, size, size)) {
 		goto err1;
 	}
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err1;
 	}
 
@@ -126,21 +126,21 @@ int   test_buf_string(char *data, size_t size)
 
 	data2 = malloc(size);
 	memcpy(data2, data, size);
-	if (OK != buf_set_data(buf2, data2, size, size)) {
+	if (BUFT_OK != buf_set_data(buf2, data2, size, size)) {
 		goto err2;
 	}
 
-	if (OK != buf_is_valid(buf2)) {
+	if (BUFT_OK != buf_is_valid(buf2)) {
 		goto err2;
 	}
 
 	buf_str_concat(buf, buf2);
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err2;
 	}
 
-	if (OK != buf_free(buf)) {
+	if (BUFT_OK != buf_free(buf)) {
 		goto err1;
 	}
 
@@ -170,7 +170,7 @@ int   test_buf_t(char *data, size_t size)
 
 	data1 = malloc(size);
 	memcpy(data1, data, size);
-	if (OK != buf_set_data(buf, data1, size, size)) {
+	if (BUFT_OK != buf_set_data(buf, data1, size, size)) {
 		goto err1;
 	}
 
@@ -193,7 +193,7 @@ int   test_buf_t(char *data, size_t size)
 		break;
 	}
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err1;
 	}
 
@@ -204,15 +204,15 @@ int   test_buf_t(char *data, size_t size)
 
 	data2 = malloc(size);
 	memcpy(data2, data, size);
-	if (OK != buf_set_data(buf2, data2, size, size)) {
+	if (BUFT_OK != buf_set_data(buf2, data2, size, size)) {
 		goto err2;
 	}
 
-	if (OK != buf_is_valid(buf2)) {
+	if (BUFT_OK != buf_is_valid(buf2)) {
 		goto err2;
 	}
 
-	if (OK != buf_free(buf)) {
+	if (BUFT_OK != buf_free(buf)) {
 		goto err1;
 	}
 

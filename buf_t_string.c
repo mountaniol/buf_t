@@ -18,9 +18,9 @@
 /* Validate sanity of buf_t */
 ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
-	if (OK != buf_is_string(buf)) {
+	if (BUFT_OK != buf_is_string(buf)) {
 		DE("Buffer is not string type\n");
 		return (-ECANCELED);
 	}
@@ -29,7 +29,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	/* If there is a data, then:
 	   the room must be greater than used, because we do not count terminating \0 */
 	//if ((NULL != buf->data) && (buf_room(buf) <= buf_used(buf))) {
-	if ((NO == buf_data_is_null(buf)) && (buf_room(buf) <= buf_used(buf))) {
+	if ((BUFT_NO == buf_data_is_null(buf)) && (buf_room(buf) <= buf_used(buf))) {
 		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_used(buf), buf_room(buf));
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -37,7 +37,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	/* For string buffers only: check that the string is null terminated */
 	/* If the 'used' area not '\0' terminated - invalid */
-	if ((NO == buf_data_is_null(buf)) && ('\0' != *((char *)buf_data(buf) + buf_used(buf)))) {
+	if ((BUFT_NO == buf_data_is_null(buf)) && ('\0' != *((char *)buf_data(buf) + buf_used(buf)))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
 		//DE("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_used(buf), buf_room(buf), *(buf->data + buf_used(buf)), buf->data);
 		DE("used = %ld, room = %ld, last character = |%c|, string = %s\n",
@@ -48,7 +48,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	DDD0("Buffer is valid\n");
 	//buf_print_flags(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 /*@null@*/ buf_t *buf_string(buf_s64_t size)
@@ -58,7 +58,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	T_RET_ABORT(buf, NULL);
 
-	if (OK != buf_mark_string(buf)) {
+	if (BUFT_OK != buf_mark_string(buf)) {
 		DE("Can't set STRING flag\n");
 		abort();
 	}
@@ -81,9 +81,9 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	buf = buf_new(0);
 	TESTP(buf, NULL);
 
-	if (OK != buf_set_flag(buf, BUF_T_TYPE_STRING)) {
+	if (BUFT_OK != buf_set_flag(buf, BUF_T_TYPE_STRING)) {
 		DE("Can't set STRING flag\n");
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Can't release a buffer\n");
 		}
 		TRY_ABORT();
@@ -92,10 +92,10 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	/* We set string into the buf_t.
 	 * The 'room' len contain null terminatior,
 	 * the 'used' for string doesn't */
-	if (OK != buf_set_data(buf, str, size_without_0 + 1, size_without_0)) {
+	if (BUFT_OK != buf_set_data(buf, str, size_without_0 + 1, size_without_0)) {
 		DE("Can't set string into buffer\n");
 		/* Just in case: Disconnect buffer from the buf_t before release it */
-		if (OK != buf_set_data(buf, NULL, 0, 0)) {
+		if (BUFT_OK != buf_set_data(buf, NULL, 0, 0)) {
 			DE("Can not set a new room value to the buffer\n");
 			TRY_ABORT();
 		}
@@ -105,7 +105,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	return (buf);
 err:
 	/*@ignore@**/
-	if (OK != buf_free(buf)) {
+	if (BUFT_OK != buf_free(buf)) {
 		DE("Can not release the buffer\n");
 	}
 	return (NULL);
@@ -116,7 +116,7 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 {
 	size_t new_size;
 
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	T_RET_ABORT(new_data, -EINVAL);
 
 	new_size = size;
@@ -139,19 +139,19 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 	memory_to_copy += buf_used(buf);
 	memcpy(memory_to_copy, new_data, size);
 	/*@end@*/
-	if (OK != buf_inc_used(buf, size)) {
+	if (BUFT_OK != buf_inc_used(buf, size)) {
 		DE("Can not increase 'used'\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 	BUF_TEST(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 {
 	char      *_buf_data;
 	buf_s64_t calculated_used_size;
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* If the buf is empty - return with error */
 	if (0 == buf_room(buf)) {
@@ -180,16 +180,16 @@ ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 	/* If the calculated used_size is te same as set in the buffer - nothing to do */
 	if (calculated_used_size == buf_used(buf)) {
 		DDD0("No need new string size: %ld -> %ld\n", buf_used(buf), calculated_used_size);
-		return OK;
+		return BUFT_OK;
 	}
 
 	DDD0("Setting new string size: %ld -> %ld\n", buf_used(buf), calculated_used_size);
 	/* No, the new size if less than the current */
-	if (OK != buf_set_used(buf, calculated_used_size)) {
+	if (BUFT_OK != buf_set_used(buf, calculated_used_size)) {
 		DE("Can not set a new 'used' value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
@@ -198,7 +198,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 	size_t new_size = -1;
 	ret_t  ret;
 
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	/* If the buf is empty - return with error */
 	if (0 == buf_room(buf)) {
 		DE("Tryed to pack an empty buffer\n");
@@ -206,7 +206,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	ret = buf_str_detect_used(buf);
-	if (OK != ret) {
+	if (BUFT_OK != ret) {
 		return (ret);
 	}
 
@@ -243,12 +243,12 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 	}
 	/*@end@*/
 
-	if (OK != buf_set_room(buf, new_size)) {
+	if (BUFT_OK != buf_set_room(buf, new_size)) {
 		DE("Can not set a new room value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
-	return (OK);
+	return (BUFT_OK);
 }
 
 /*@null@*/buf_t *buf_sprintf(/*@in@*//*@temp@*/const char *format, ...)
@@ -275,9 +275,9 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 	/* Allocate buffer: we need +1 for final '\0' */
 	rc = buf_add_room(buf, rc + 1);
 
-	if (OK != rc) {
+	if (BUFT_OK != rc) {
 		DE("Can't add room to buf\n");
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Warning, can't free buf_t, possible memory leak\n");
 		}
 		return (NULL);
@@ -288,24 +288,24 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 
 	if (rc < 0) {
 		DE("Can't print string\n");
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Warning, can't free buf_t, possible memory leak\n");
 		}
 		return (NULL);
 	}
 
-	if (OK != buf_set_used(buf, buf_room(buf) - 1)) {
+	if (BUFT_OK != buf_set_used(buf, buf_room(buf) - 1)) {
 		DE("Can not set a new 'used' value to the buffer\n");
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Warning, can't free buf_t, possible memory leak\n");
 		}
 		return (NULL);
 	}
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - free and return\n");
 		TRY_ABORT();
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Can not crelease a buffer\n");
 		}
 		return (NULL);
@@ -321,32 +321,32 @@ ret_t buf_str_concat(/*@in@*//*@temp@*//*notnull*/buf_t *dst, /*@in@*//*@temp@*/
 	T_RET_ABORT(src, -EINVAL);
 	T_RET_ABORT(dst, -EINVAL);
 
-	if (OK != buf_is_string(src)) {
+	if (BUFT_OK != buf_is_string(src)) {
 		DE("src buffer is not string\n");
 		TRY_ABORT();
-		return BAD;
+		return -BUFT_BAD;
 	}
 
-	if (OK != buf_is_string(dst)) {
+	if (BUFT_OK != buf_is_string(dst)) {
 		DE("dst buffer is not string\n");
 		TRY_ABORT();
-		return BAD;
+		return -BUFT_BAD;
 	}
 
-	if (OK != buf_add_room(dst, buf_used(src))) {
+	if (BUFT_OK != buf_add_room(dst, buf_used(src))) {
 		DE("Can not add room for string copy");
 	}
 
 	_dst_buf_data = (char *)buf_data(dst);
 	_src_buf_data = (char *)buf_data(src);
 	memcpy(_dst_buf_data + buf_used(dst), _src_buf_data, buf_used(src));
-	if (OK != buf_inc_used(dst, buf_used(src))) {
+	if (BUFT_OK != buf_inc_used(dst, buf_used(src))) {
 		DE("Can not increase 'used'\n");
 		TRY_ABORT();
-		return BAD;
+		return -BUFT_BAD;
 	}
 	//dst->used += buf_used(src);
 	_dst_buf_data[buf_used(dst)] = '\0';
-	return OK;
+	return BUFT_OK;
 }
 

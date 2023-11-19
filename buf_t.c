@@ -19,6 +19,7 @@
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
+#include "se_tests.h"
 
 /* Abort on error */
 static buf_t_flags_t g_abort_on_err = 0;
@@ -64,60 +65,60 @@ void buf_default_flags(buf_t_flags_t f)
 /* Set flag(s) of the buf */
 ret_t buf_set_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	buf->flags |= f;
-	return (OK);
+	return (BUFT_OK);
 }
 
 /* Clear flag(s) of the buf */
 ret_t buf_rm_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	buf->flags &= ~f;
-	return (OK);
+	return (BUFT_OK);
 }
 
 /***** Set of functions to add a flag to the buffer */
 
 ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_TYPE_STRING));
 }
 
 ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_TYPE_ARR));
 }
 
 ret_t buf_mark_ro(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_FLAG_READONLY));
 }
 
 ret_t buf_mark_compresed(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_FLAG_COMPRESSED));
 }
 
 ret_t buf_mark_encrypted(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_FLAG_ENCRYPTED));
 }
 
 ret_t buf_mark_canary(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_FLAG_CANARY));
 }
 
 ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_set_flag(buf, BUF_T_FLAG_CRC));
 }
 
@@ -125,41 +126,50 @@ ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf)
 
 ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_rm_flag(buf, BUF_T_TYPE_STRING));
 }
 
 ret_t buf_unmark_ro(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_rm_flag(buf, BUF_T_FLAG_READONLY));
 }
 
 ret_t buf_unmark_compressed(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_rm_flag(buf, BUF_T_FLAG_COMPRESSED));
 }
 
 ret_t buf_unmark_encrypted(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_rm_flag(buf, BUF_T_FLAG_ENCRYPTED));
 }
 
 ret_t buf_unmark_canary(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_rm_flag(buf, BUF_T_FLAG_CANARY));
 }
 
 ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf_rm_flag(buf, BUF_T_FLAG_CRC));
 }
 
 /***** CANARY: Protect the buffer *****/
+
+ret_t buf_has_canary_flag(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	if (IS_BUF_CANARY(buf)) {
+		return (BUFT_YES);
+	}
+
+	return (BUFT_NO);
+}
 
 /* Set canary word in the end of the buf
  * If buf has 'BUF_T_CANARY' flag set, it means
@@ -171,12 +181,12 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
 	buf_t_canary_t canary;
 	buf_t_canary_t *canary_p;
-	T_RET_ABORT(buf, -EINVAL);
-	if (!IS_BUF_CANARY(buf)) {
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	if (BUFT_NO == buf_has_canary_flag(buf)) {
 		DE("The buffer doesn't have CANARY flag\n");
 		TRY_ABORT();
 		/*@ignore@*/
-		return (-ECANCELED);
+		return (-BUFT_WRONG_BUF_FLAG);
 		/*@end@*/
 	}
 
@@ -188,17 +198,17 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	if (0 != memcmp(canary_p, &canary, BUF_T_CANARY_SIZE)) {
 		DE("Can't set CANARY\n");
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_CANNOT_SET_CANARY);
 	}
-	return (OK);
+	return (BUFT_OK);
 }
 
 buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
-	/* In case it is a circ buffer, */
-	if (OK == buf_is_circ(buf)) {
+	/* In case it is a circ buffer */
+	if (BUFT_OK == buf_is_circ(buf)) {
 		DD("The buffer is CIRC\n");
 		if (buf->ht.head <= buf->ht.tail) {
 			return (buf->ht.head - buf->ht.tail);
@@ -207,94 +217,125 @@ buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* In case it is an array buffer */
-	if (OK == buf_is_array(buf)) {
+	if (BUFT_OK == buf_is_array(buf)) {
 		return buf_arr_used(buf);
 	}
 
-
+	/* In other cases, just return the '->used' field */
 	return (buf->used);
 }
 
 ret_t buf_set_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer */
-	if (OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_is_circ(buf)) {
 		DE("Can not set ->used for CIRC fuffer - use 'buf_set_head_tail()' instead\n");
 		abort();
 	}
 
 	/* In case it is an array buffer */
-	if (OK == buf_is_array(buf)) {
+	if (BUFT_OK == buf_is_array(buf)) {
 		return buf_array_set_used(buf, used);
 	}
 
 	buf->used = used;
-	return OK;
+	return (BUFT_OK);
 }
 
 ret_t buf_inc_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer, */
-	if (OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_is_circ(buf)) {
 		DE("Can not add to ->used for CIRC fuffer - use 'buf_add_head_tail()' instead\n");
-		abort();
+		TRY_ABORT();
+		return (-BUFT_BAD_BUFT_TYPE);
 	}
+
+	/* In case of array buffer it is not applicable */
+	if (BUFT_OK == buf_is_array(buf)) {
+		DE("Can not add to ->used for ARRAY fuffer - use 'buf_add_head_tail()' instead\n");
+		TRY_ABORT();
+		return (-BUFT_BAD_BUFT_TYPE);
+	}
+
+	/* TODO: Detext out of limit situation */
 	buf->used += inc;
-	return OK;
+	return (BUFT_OK);
 }
 
 ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer, */
-	if (OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_is_circ(buf)) {
 		DE("Can not add to ->used for CIRC fuffer - use 'buf_add_head_tail()' instead\n");
-		abort();
+		TRY_ABORT();
+		return (-BUFT_BAD_BUFT_TYPE);
+	}
+
+	/* In case of array buffer it is not applicable */
+	if (BUFT_OK == buf_is_array(buf)) {
+		DE("Can not add to ->used for ARRAY fuffer - use 'buf_add_head_tail()' instead\n");
+		TRY_ABORT();
+		return (-BUFT_BAD_BUFT_TYPE);
 	}
 
 	if (dec > buf_used(buf)) {
 		DE("Can not decrement buf->used: the dec > buf->used (%ld > %ld)\n",
 		   dec, buf_used(buf));
-		return BAD;
+		return (-BUFT_OUT_OF_LIMIT_OP);
 	}
 
 	if (buf->used >= dec) {
 		buf->used -= dec;
 	}
-	return OK;
+	return BUFT_OK;
 }
 
 /* This function will add canary bits after an existing buffer
- * and add the CANARY flag. The buffer room will be decreased by 1 (byte).
+ * and add the CANARY flag. The buffer room will be decreased by size of canary.
  * If buf->used == buf->room, the ->used be decreased as well.
  * If this buffer contains a string, i.e.type is BUF_T_STRING,
  * a '\0' will be added before the canary bits
  */
 ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
+	/* In case there is no space fpr CANARY tail,
+	   try to increase buffer space to keep CANARY */
+
+	if (buf_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE ||
+		buf_used(buf) == buf_room(buf)) {
+
+		/* Add room to keep CANARY tail */
+		buf_add_room(buf, BUF_T_CANARY_SIZE);
+	}
+
+
+	/* If there no space to set CANARY tail, we abort the function */
 	if (buf_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
 		DE("Buffer is to small for CANARY word\n");
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_TOO_SMALL);
 	}
 
+	/* The buffer is big enough but all allocated data is occupied */
 	if (buf_used(buf) == buf_room(buf)) {
-		if (OK != buf_dec_used(buf, BUF_T_CANARY_SIZE)) {
+		if (BUFT_OK != buf_dec_used(buf, BUF_T_CANARY_SIZE)) {
 			DE("Can not decrement a buffer used value");
-			return (BAD);
+			return (-BUFT_BAD);
 		}
 	}
 
-	if (OK != buf_dec_room(buf, BUF_T_CANARY_SIZE)) {
+	if (BUFT_OK != buf_dec_room(buf, BUF_T_CANARY_SIZE)) {
 		DE("Can not decrement a buffer room value\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 	return (buf_set_canary(buf));
 }
@@ -304,7 +345,7 @@ ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
 	buf_t_canary_t canary = BUF_T_CANARY_CHAR_PATTERN;
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* */
 	if (!IS_BUF_CANARY(buf)) {
@@ -312,13 +353,13 @@ ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	if (0 == memcmp(buf->data + buf_room(buf), &canary, BUF_T_CANARY_SIZE)) {
-		return (OK);
+		return (BUFT_OK);
 	}
 
 	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf_room(buf)));
 
 	TRY_ABORT();
-	return (BAD);
+	return (-BUFT_BAD);
 }
 
 /* Extract canary word from the buf */
@@ -326,10 +367,10 @@ buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
 	buf_t_canary_t *canary_p;
-	T_RET_ABORT(buf, (buf_t_canary_t)-1);
+	T_RET_ABORT(buf, -1);
 	if (!IS_BUF_CANARY(buf)) {
 		DE("The buffer doesn't have canary flag\n");
-		return (OK);
+		return (BUFT_OK);
 	}
 
 	//memcpy(&canary, buf->data + buf->room, BUF_T_CANARY_SIZE);
@@ -353,7 +394,7 @@ void buf_print_flags(/*@temp@*//*@in@*/buf_t *buf)
 static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* buf->used always <= buf->room */
 	/* TODO: not in case of CIRC buffer */
@@ -378,7 +419,7 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	if (buf_room(buf) > 0 && IS_BUF_CANARY(buf) && (OK != buf_test_canary(buf))) {
+	if (buf_room(buf) > 0 && IS_BUF_CANARY(buf) && (BUFT_OK != buf_test_canary(buf))) {
 		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_room(buf);
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
@@ -395,14 +436,14 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	DDD0("Buffer is valid\n");
 	//buf_print_flags(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 {
 	ret_t ret;
 	ret = buf_common_is_valid(buf);
-	if (OK != ret) {
+	if (BUFT_OK != ret) {
 		DE("Buffer is invalud - returning/aborting");
 		TRY_ABORT();
 		return ret;
@@ -411,7 +452,7 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 	switch (BUF_TYPE(buf)) {
 	case BUF_T_TYPE_RAW:
 		/* For RAW buffer no additional test needed */
-		return OK;
+		return BUFT_OK;
 		break;
 	case BUF_T_TYPE_STRING:
 		return buf_str_is_valid(buf);
@@ -422,46 +463,48 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 	default:
 		DE("Unknown buffer type: %d\n", BUF_TYPE(buf));
 		TRY_ABORT();
-		return BAD;
+		return -BUFT_BAD;
 	}
 
-	return OK;
+	return BUFT_OK;
 }
+
+/***** TEST BUFFER TYPE ******/
 
 int buf_is_string(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_STRING(buf)) {
-		return (YES);
+		return (BUFT_YES);
 	}
-	return (NO);
+	return (BUFT_NO);
 }
 
 int buf_is_array(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_ARR(buf)) {
-		return (YES);
+		return (BUFT_YES);
 	}
-	return (NO);
+	return (BUFT_NO);
 }
 
 int buf_is_bit(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_BIT(buf)) {
-		return (YES);
+		return (BUFT_YES);
 	}
-	return (NO);
+	return (BUFT_NO);
 }
 
 int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_CIRC(buf)) {
-		return (YES);
+		return (BUFT_YES);
 	}
-	return (NO);
+	return (BUFT_NO);
 }
 
 /*@only@*//*@in@*/ buf_t *buf_new(buf_s64_t size)
@@ -496,31 +539,31 @@ int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* TODO: in case of CIRC buffer it is wrong */
-	if (OK != buf_set_room(buf, size)) {
+	if (BUFT_OK != buf_set_room(buf, size)) {
 		DE("Can not set a new 'room' value\n");
 		free(buf);
 		return (NULL);
 	}
 
-	if (OK != buf_set_used(buf, 0)) {
+	if (BUFT_OK != buf_set_used(buf, 0)) {
 		DE("Can not set a new 'used' value\n");
 		free(buf);
 		return (NULL);
 	}
 
 	/* Set CANARY word */
-	if (size > 0 && IS_BUF_CANARY(buf) && OK != buf_set_canary(buf)) {
+	if (size > 0 && IS_BUF_CANARY(buf) && BUFT_OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY word\n");
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Can't free the buffer\n");
 		}
 		TRY_ABORT();
 		return (NULL);
 	}
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid right after allocation!\n");
-		if (OK != buf_free(buf)) {
+		if (BUFT_OK != buf_free(buf)) {
 			DE("Can not free the buffer\n");
 		}
 		TRY_ABORT();
@@ -533,8 +576,8 @@ int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only@*/ /*@in@*/char *data, const buf_s64_t size, const buf_s64_t len)
 /*@sets buf->data@*/
 {
-	T_RET_ABORT(buf, -EINVAL);
-	T_RET_ABORT(data, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	T_RET_ABORT(data, -BUFT_NULL_POINTER);
 
 	/* Don't replace data in read-only buffer */
 	if (IS_BUF_RO(buf)) {
@@ -544,25 +587,25 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 	}
 
 	buf->data = data;
-	if (OK != buf_set_room(buf, size)) {
+	if (BUFT_OK != buf_set_room(buf, size)) {
 		DE("Can not set a new value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
-	if (OK != buf_set_used(buf, len)) {
+	if (BUFT_OK != buf_set_used(buf, len)) {
 		DE("Can not set a new 'used' value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
 	/* If external data set we clean CANRY flag */
 	/* TODO: Don't do it. Just realloc the buffer to set CANARY in the end */
 	/* TODO: Also flag STATIC should be tested */
-	if (OK != buf_unmark_canary(buf)) {
+	if (BUFT_OK != buf_unmark_canary(buf)) {
 		DE("Can not unset canary flag\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
-	return (OK);
+	return (BUFT_OK);
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
@@ -570,7 +613,7 @@ ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@on
 /*@sets buf->data@*/
 {
 	int rc;
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (NULL == data && size > 0) {
 		DE("Wrong arguments: data == NULL but size > 0 (%lu)\n", size);
@@ -578,21 +621,21 @@ ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@on
 	}
 
 	rc = buf_set_data(buf, data, size, size);
-	if (OK != rc) {
+	if (BUFT_OK != rc) {
 		DE("Can't set data\n");
 		return (rc);
 	}
 
-	if (OK != buf_unmark_canary(buf)) {
+	if (BUFT_OK != buf_unmark_canary(buf)) {
 		DE("Can not unset CANARY flag\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
-	if (OK != buf_mark_ro(buf)) {
+	if (BUFT_OK != buf_mark_ro(buf)) {
 		DE("Can not set RO flag\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
-	return (OK);
+	return (BUFT_OK);
 }
 
 /*@null@*//*@only@*/void *buf_steal_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
@@ -602,12 +645,12 @@ ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@on
 	T_RET_ABORT(buf, NULL);
 	data = buf->data;
 	buf->data = NULL;
-	if (OK != buf_set_room(buf, 0)) {
+	if (BUFT_OK != buf_set_room(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
 		return (data);
 	}
 
-	if (OK != buf_set_used(buf, 0)) {
+	if (BUFT_OK != buf_set_used(buf, 0)) {
 		DE("Can not set a new 'used' value to the buffer\n");
 		return (data);
 	}
@@ -622,7 +665,7 @@ ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@on
 	void *data;
 	T_RET_ABORT(buf, NULL);
 	data = buf_steal_data(buf);
-	if (OK != buf_free(buf)) {
+	if (BUFT_OK != buf_free(buf)) {
 		DE("Warning! Memory leak: can't clean buf_t!");
 		TRY_ABORT();
 	}
@@ -642,11 +685,11 @@ ret_t buf_data_is_null(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (NULL == buf->data) {
-		return YES;
+		return BUFT_YES;
 	}
-	return NO;
+	return BUFT_NO;
 }
 
 static ret_t buf_realloc(/*@temp@*//*@in@*//*@special@*/buf_t *buf, size_t new_size)
@@ -675,7 +718,7 @@ static ret_t buf_realloc(/*@temp@*//*@in@*//*@special@*/buf_t *buf, size_t new_s
 		buf->data = tmp;
 	}
 
-	return OK;
+	return BUFT_OK;
 }
 
 ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
@@ -684,10 +727,10 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 {
 	size_t canary = 0;
 
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (0 == size) {
-		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", (void *) buf, size);
+		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", (void *)buf, size);
 		TRY_ABORT();
 		return (-EINVAL);
 	}
@@ -703,7 +746,7 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 		canary = BUF_T_CANARY_SIZE;
 	}
 
-	if (OK != buf_realloc(buf, buf_room(buf) + size + canary)) {
+	if (BUFT_OK != buf_realloc(buf, buf_room(buf) + size + canary)) {
 		DE("Can not reallocate buf->data\n");
 		return (-ENOMEM);
 	}
@@ -714,14 +757,14 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 	/* Case 3: realloc succeeded, the same pointer - we do nothing */
 	/* <Beeep> */
 
-	if (OK != buf_inc_room(buf, size)) {
+	if (BUFT_OK != buf_inc_room(buf, size)) {
 		DE("Can not increment 'room' value\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
 	/* If the buffer use canary add it to the end */
 
-	if (IS_BUF_CANARY(buf) && OK != buf_set_canary(buf)) {
+	if (IS_BUF_CANARY(buf) && BUFT_OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY\b");
 		TRY_ABORT();
 		/*@ignore@*/
@@ -730,12 +773,12 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 	}
 
 	BUF_TEST(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (expect == 0) {
 		DE("'expected' size == 0\n");
@@ -744,7 +787,7 @@ ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 	}
 
 	if (buf_used(buf) + expect <= buf_room(buf)) {
-		return (OK);
+		return (BUFT_OK);
 	}
 
 	return (buf_add_room(buf, expect));
@@ -753,9 +796,9 @@ ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@releases buf->data@*/
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
 	}
 
@@ -771,27 +814,27 @@ ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		memset(buf->data, 0, buf_room(buf));
 		free(buf->data);
 	}
-	if (OK != buf_set_room(buf, 0)) {
+	if (BUFT_OK != buf_set_room(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
-	if (OK != buf_set_used(buf, 0)) {
+	if (BUFT_OK != buf_set_used(buf, 0)) {
 		DE("Can not set a new 'used' value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
 	buf->flags = 0;
 
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 /*@releases buf->data@*/
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
 	}
 
@@ -802,7 +845,7 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 		return (-EACCES);
 	}
 
-	if (OK != buf_clean(buf)) {
+	if (BUFT_OK != buf_clean(buf)) {
 		DE("Can't clean buffer, stopped operation, returning error\n");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -811,7 +854,7 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 	TFREE_SIZE(buf, sizeof(buf_t));
 	/* The buffer is released. Write down statistics. */
 	buf_release_num_inc();
-	return (OK);
+	return (BUFT_OK);
 }
 
 /*
@@ -858,49 +901,49 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	/*@ignore@*/
 	memcpy(buf->data + buf_used(buf), new_data, size);
 	/*@end@*/
-	if (OK != buf_inc_used(buf, size)) {
+	if (BUFT_OK != buf_inc_used(buf, size)) {
 		DE("Can not increment 'used' of a budder\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
 	BUF_TEST(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 buf_s64_t buf_room(/*@temp@*//*@in@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf->room);
 }
 
 ret_t buf_set_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t room)
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	buf->room = room;
-	return OK;
+	return BUFT_OK;
 }
 
 ret_t buf_inc_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	buf->room += inc;
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_dec_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 {
 	/* If buf is invalid we return '-1' costed into uint */
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (dec > buf_room(buf)) {
 		DE("Can'r decrement the room: dec > buf->room (%ld > %ld)\n", dec, buf_room(buf));
-		return BAD;
+		return -BUFT_BAD;
 	}
 
 	buf->room -= dec;
-	return (OK);
+	return (BUFT_OK);
 }
 
 ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
@@ -908,7 +951,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
 	size_t new_size = -1;
 
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	switch (BUF_TYPE(buf)) {
 	case BUF_T_TYPE_STRING:
@@ -918,12 +961,12 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	/*** If buffer is empty we have nothing to do */
 
 	if (NULL == buf->data) {
-		return (OK);
+		return (BUFT_OK);
 	}
 
 	/*** Sanity check: dont' process invalide buffer */
 
-	if (OK != buf_is_valid(buf)) {
+	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Buffer is invalid - can't proceed\n");
 		return (-ECANCELED);
 	}
@@ -931,7 +974,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	/*** Should we really pack it? */
 	if (buf_used(buf) == buf_room(buf)) {
 		/* No need to pack it */
-		return (OK);
+		return (BUFT_OK);
 	}
 
 	/* Here we shrink the buffer */
@@ -940,27 +983,27 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		new_size += BUF_T_CANARY_SIZE;
 	}
 
-	if (OK != buf_realloc(buf, new_size)) {
+	if (BUFT_OK != buf_realloc(buf, new_size)) {
 		DE("Can not realloc buf->data\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
-	if (OK != buf_set_room(buf, buf_used(buf))) {
+	if (BUFT_OK != buf_set_room(buf, buf_used(buf))) {
 		DE("Can not set a new room value to the buffer\n");
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
 	if (0 != IS_BUF_CANARY(buf)) {
-		if (OK != buf_set_canary(buf)) {
+		if (BUFT_OK != buf_set_canary(buf)) {
 			DE("Can not set CANARY to the buffer\n");
 			TRY_ABORT();
-			return (BAD);
+			return (-BUFT_BAD);
 		}
 	}
 
 	/* Here we are if buf->used == buf->room */
 	BUF_TEST(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 /* Experimental: Try to set the buf used size automatically */
@@ -969,7 +1012,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 ret_t buf_detect_used(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* If the buf is empty - return with error */
 	if (0 == buf_room(buf)) {
@@ -986,7 +1029,7 @@ ret_t buf_detect_used(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	/* We should not get here */
-	return (BAD);
+	return (-BUFT_BAD);
 }
 
 /* 
@@ -1023,15 +1066,15 @@ buf_t *buf_extract_field(buf_t *buf, const char *delims, const char *skip, size_
 size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, const buf_s64_t expected, const int flags)
 /*@uses buf->data@*/
 {
-	int     rc       = BAD;
+	int     rc       = -BUFT_BAD;
 	ssize_t received = -1;
 
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that we have enough room in the buffer */
 	rc = buf_test_room(buf, expected);
 
-	if (OK != rc) {
+	if (BUFT_OK != rc) {
 		DE("Can't allocate enough room in buf\n");
 		TRY_ABORT();
 		return (-ENOMEM);
@@ -1039,7 +1082,7 @@ size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, con
 
 	received = recv(socket, buf->data + buf_used(buf), expected, flags);
 	if (received > 0) {
-		if (OK != buf_inc_used(buf, received)) {
+		if (BUFT_OK != buf_inc_used(buf, received)) {
 			DE("Can not increment 'used'");
 			TRY_ABORT();
 			return (-EINVAL);
@@ -1055,6 +1098,9 @@ buf_t *buf_from_file(const char *filename)
 	buf_t       *buf;
 	struct stat st;
 	int         rv;
+
+
+	T_RET_ABORT(filename, NULL);
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -1087,20 +1133,24 @@ buf_t *buf_from_file(const char *filename)
 int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 {
 	int fd;
-	int rv = BAD;
+	int rv = -BUFT_BAD;
+
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	T_RET_ABORT(file, -BUFT_NULL_POINTER);
+	T_RET_ABORT(file->data, -BUFT_NULL_POINTER);
 
 	fd = open(file->data, O_WRONLY);
 	if (fd < 0) {
 		DE("can't open file fir reading: %s\n", file->data);
-		return (BAD);
+		return (-BUFT_BAD);
 	}
 
 	rv = write(fd, buf->data, buf->room);
 
 	if (rv < 0 || (buf_s64_t)rv != buf->room) {
 		DE("Error on file writinf: asked %lu, read %d\n", buf->room, rv);
-		rv = BAD;
-	} else rv = OK;
+		rv = -BUFT_BAD;
+	} else rv = BUFT_OK;
 
 	if (mode != 0) {
 		if (0 != fchmod(fd, mode)) {

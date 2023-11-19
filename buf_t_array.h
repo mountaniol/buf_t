@@ -1,6 +1,8 @@
 #ifndef _BUF_T_ARRAY_USED_H_
 #define _BUF_T_ARRAY_USED_H_
 
+#include "buf_t_structs.h"
+
 /**
  * @author Sebastian Mountaniol (11/18/23)
  * @brief Get number of members kept in this buf_t

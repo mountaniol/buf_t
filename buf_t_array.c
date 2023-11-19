@@ -21,10 +21,10 @@
 /* Get number of members in buf_t */
 buf_s32_t buf_arr_members(buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -36,10 +36,10 @@ buf_s32_t buf_arr_members(buf_t *buf)
 /* Set number of members in buf_t */
 ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -52,16 +52,16 @@ ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members)
 	}
 
 	buf->arr.members = new_members;
-	return OK;
+	return BUFT_OK;
 }
 
 /* Get size of a single member in buf_t */
 buf_s32_t buf_arr_member_size(buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -73,17 +73,17 @@ buf_s32_t buf_arr_member_size(buf_t *buf)
 /* Set a size of a single member in buf_t */
 ret_t buf_set_arr_member_size(buf_t *buf, buf_s32_t new_size)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
 
 	buf->arr.size = new_size;
-	return OK;
+	return BUFT_OK;
 }
 
 /* Calculate 'used' space int the buf */
@@ -92,11 +92,11 @@ buf_s64_t buf_arr_used(buf_t *buf)
 	buf_s64_t ret_members     = 0;
 	buf_s64_t ret_member_size = 0;
 
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer;
 	   if it is not, cancel the operation */
-	if (NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -123,7 +123,7 @@ buf_s64_t buf_arr_used(buf_t *buf)
    in this case we recalculate number of members in the array */
 ret_t buf_arr_set_used(buf_t *buf, buf_s64_t new_used)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* We can execute this operation only when we know the size of a single member */
 	if (buf->arr.size < 1) {
@@ -141,16 +141,16 @@ ret_t buf_arr_set_used(buf_t *buf, buf_s64_t new_used)
 	}
 
 	buf->arr.members = (new_used / buf->arr.size);
-	return OK;
+	return BUFT_OK;
 }
 
 /* Validate sanity of the buffer */
 ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 {
-	T_RET_ABORT(buf, -EINVAL);
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* TEST: The type must be ARRAY */
-	if (OK != buf_is_array(buf)) {
+	if (BUFT_OK != buf_is_array(buf)) {
 		DE("Buffer is not an array type\n");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -158,7 +158,7 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 
 	/* TEST: If buf->data is NULL, the 'room' and 'usage' can not be > 0 */
-	if (YES == buf_data_is_null(buf)) {
+	if (BUFT_YES == buf_data_is_null(buf)) {
 		/* Test buf->room is 0 */
 		if (buf_room(buf) > 0) {
 			DE("buf->data is NULL buf buf->room > 0\n");
@@ -182,7 +182,7 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	}
 
 	/* TEST: ->data is not NULL, than neither arr.amount not arr.size could be < 0 */
-	if (NO == buf_data_is_null(buf)) {
+	if (BUFT_NO == buf_data_is_null(buf)) {
 		if (buf_arr_members(buf) < 0) {
 			DE("Value of 'members' < 0");
 			TRY_ABORT();
@@ -198,7 +198,7 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	DDD0("Buffer is valid\n");
 	//buf_print_flags(buf);
-	return (OK);
+	return (BUFT_OK);
 }
 
 /* We can set used if it 0 or it multiples of size of one memnber */
@@ -206,19 +206,19 @@ ret_t buf_array_set_used(/*@in@*//*@temp@*/buf_t *buf, buf_s64_t used)
 {
 	if (0 == used) {
 		buf->arr.members = buf->arr.size = 0;
-		return OK;
+		return BUFT_OK;
 	}
 
 	if (0 == (used % buf->arr.size)) {
 		buf->arr.members = used / buf->arr.size;
-		return OK;
+		return BUFT_OK;
 	}
 
 	/* Else we have an error */
 	DE("Can not set 'used' of the array: it is not multiples of size of one memnber: asked to sed %ld, member size %d, modulo is %ld\n",
 	   used, buf->arr.size, (used % buf->arr.size));
 	TRY_ABORT();
-	return (BAD);
+	return (-BUFT_BAD);
 
 }
 
@@ -229,7 +229,7 @@ ret_t buf_array_set_used(/*@in@*//*@temp@*/buf_t *buf, buf_s64_t used)
 
 	T_RET_ABORT(buf, NULL);
 
-	if (OK != buf_mark_array(buf)) {
+	if (BUFT_OK != buf_mark_array(buf)) {
 		DE("Can't set ARRAY flag\n");
 		abort();
 	}
@@ -265,7 +265,7 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 	new_room += buf->arr.size * num_of_new_members;
 
 	/* Add room if needed: buf_test_room() adds room if needed */
-	if (OK != buf_test_room(buf, new_room)) {
+	if (BUFT_OK != buf_test_room(buf, new_room)) {
 		DE("Can't add room to buf_t: old room is %ld, asked room is %ld\n",
 		   buf_arr_used(buf), new_room);
 		TRY_ABORT();
@@ -278,7 +278,7 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 
 	/* Increase number of elements in the array */
 	buf->arr.members += num_of_new_members;
-	return OK;
+	return BUFT_OK;
 }
 
 /* Add one memner */
@@ -290,7 +290,7 @@ ret_t buf_arr_add(buf_t *buf, const void *new_data_ptr)
 /* Remove members from buffer: from 'from_memeber' (inclusive), number of members */
 ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_t num_of_new_members)
 {
-	T_RET_ABORT(buf, BAD);
+	T_RET_ABORT(buf, -BUFT_BAD);
 
 	/* The start member must be > 0 */
 	if (from_member < 0) {
@@ -333,7 +333,7 @@ ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_
 
 	/* Decrease number of members in the array */
 	buf->arr.members -= num_of_new_members;
-	return OK;
+	return BUFT_OK;
 }
 
 ret_t buf_arr_rm(buf_t *buf, const buf_s32_t member_index)
@@ -378,10 +378,10 @@ ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, 
 	if (NULL == ptr) {
 		DE("Can not get pointer of asked memner\n");
 		TRY_ABORT();
-		return BAD;
+		return -BUFT_BAD;
 	}
 
 	memcpy(dest, ptr, buf->arr.size);
-	return OK;
+	return BUFT_OK;
 }
 

@@ -3,13 +3,7 @@
 
 #include <stdint.h>
 
-typedef enum {
-	AGN = -2, /* "Try again" status */
-	BAD = -1,  /* Error status */
-	OK = 0,    /* Success status */
-	YES = 0,   /* YES in case a function returns YES or NO */
-	NO = 1,    /* NO in case a function returns YES or NO */
-} ret_t;
+typedef uint32_t ret_t;
 
 /* Whidth of the flags field */
 typedef uint8_t buf_t_flags_t;

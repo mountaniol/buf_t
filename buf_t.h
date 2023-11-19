@@ -3,8 +3,10 @@
 
 #include <stddef.h>
 #include <sys/types.h>
+#include "buf_t_errors.h"
 #include "buf_t_types.h"
 #include "buf_t_structs.h"
+#include "buf_t_array.h"
 #include "se_debug.h"
 #include "se_tests.h"
 //#define BUF_DEBUG
@@ -18,21 +20,10 @@
 /* For err_t */
 //#include "mp-common.h"
 
-// #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
-// #define TESTP_ASSERT(x, mes) do {if(NULL == x) { DE("[[ ASSERT! ]] %s == NULL: %s\n", #x, mes); abort(); } } while(0)
-
 /* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
 extern int bug_get_abort_flag(void);
 #define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
 //#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
-
-#ifdef TFREE_SIZE
-	#undef TFREE_SIZE
-#endif
-
-#define TFREE_SIZE(x,sz) do { if(NULL != x) {memset(x,0,sz);free(x); x = NULL;} else {DE(">>>>>>>> Tried to free_size() NULL: %s (%s +%d)\n", #x, __func__, __LINE__);} }while(0)
-
-typedef /*@abstract@*/ struct buf_t_struct buf_t;
 
 /*@access buf_t@*/
 
@@ -333,7 +324,9 @@ extern ret_t buf_set_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used);
  * @param inc - The value to add to the buf->used
  * 
  * @return ret_t OK on success, BAD on an error
- * @details 
+ * @details For now, this operation not tested for out of limit
+ *  		situation. So if ->used value it too high the
+ *  		operation will be still executed 
  */
 extern ret_t buf_inc_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used);
 
@@ -742,7 +735,6 @@ extern int buf_to_file(buf_t *buf, buf_t *file, mode_t mode);
 
 /* Additional defines */
 #ifdef BUF_DEBUG
-
 	#define BUF_TEST(buf) do {if (0 != buf_is_valid(buf)){fprintf(stderr, "######>>> Buffer invalid here: func: %s file: %s + %d [allocated here: %s +%d %s()]\n", __func__, __FILE__, __LINE__, buf->filename, buf->line, buf->func);}} while (0)
 	#define BUF_DUMP(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u [allocated here: %s +%d %s()]\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used, buf->filename, buf->line, buf->func);} while(0)
 	#define BUF_DUMP_ERR(buf) do {DD("[BUFDUMP]: [%s +%d] buf = %p, data = %p, room = %u, used = %u [allocated here: %s +%d %s()]\n", __func__, __LINE__, buf, buf->data, buf->room, buf->used, buf->filename, buf->line, buf->func);} while(0)
