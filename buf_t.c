@@ -181,7 +181,7 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
 	buf_t_canary_t canary;
 	buf_t_canary_t *canary_p;
-	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	TESTP_BUF_DATA(buf);
 	if (BUFT_NO == buf_has_canary_flag(buf)) {
 		DE("The buffer doesn't have CANARY flag\n");
 		TRY_ABORT();
@@ -329,13 +329,13 @@ ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 	if (buf_used(buf) == buf_room(buf)) {
 		if (BUFT_OK != buf_dec_used(buf, BUF_T_CANARY_SIZE)) {
 			DE("Can not decrement a buffer used value");
-			return (-BUFT_BAD);
+			return (-BUFT_ALLOCATE);
 		}
 	}
 
 	if (BUFT_OK != buf_dec_room(buf, BUF_T_CANARY_SIZE)) {
 		DE("Can not decrement a buffer room value\n");
-		return (-BUFT_BAD);
+		return (-BUFT_DECREMENT);
 	}
 	return (buf_set_canary(buf));
 }
@@ -345,11 +345,11 @@ ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
 	buf_t_canary_t canary = BUF_T_CANARY_CHAR_PATTERN;
-	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	TESTP_BUF_DATA(buf);
 
-	/* */
+	/* If this buf doesn't have CANARY flag, we stop the test */
 	if (!IS_BUF_CANARY(buf)) {
-		return (-ECANCELED);
+		return (-BUFT_NO_CANARY);
 	}
 
 	if (0 == memcmp(buf->data + buf_room(buf), &canary, BUF_T_CANARY_SIZE)) {
@@ -359,7 +359,7 @@ ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf_room(buf)));
 
 	TRY_ABORT();
-	return (-BUFT_BAD);
+	return (-BUFT_BAD_CANARY);
 }
 
 /* Extract canary word from the buf */
@@ -370,7 +370,7 @@ buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	T_RET_ABORT(buf, -1);
 	if (!IS_BUF_CANARY(buf)) {
 		DE("The buffer doesn't have canary flag\n");
-		return (BUFT_OK);
+		return (-1);
 	}
 
 	//memcpy(&canary, buf->data + buf->room, BUF_T_CANARY_SIZE);
@@ -383,6 +383,7 @@ void buf_print_flags(/*@temp@*//*@in@*/buf_t *buf)
 	if (IS_BUF_TYPE_STRING(buf)) DDD("Buffer is STRING\n");
 	if (IS_BUF_TYPE_BIT(buf)) DDD("Buffer is BIT\n");
 	if (IS_BUF_TYPE_CIRC(buf)) DDD("Buffer is CIRC\n");
+	if (IS_BUF_TYPE_ARR(buf)) DDD("Buffer is ARRAY\n");
 	if (IS_BUF_RO(buf)) DDD("Buffer is READONLY\n");
 	if (IS_BUF_COMPRESSED(buf)) DDD("Buffer is COMPRESSED\n");
 	if (IS_BUF_ENCRYPTED(buf)) DDD("Buffer is ENCRYPTED\n");
@@ -401,7 +402,7 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	if (buf_used(buf) > buf_room(buf)) {
 		DE("Invalid buf: buf->used > buf->room\n");
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_BAD_USED);
 	}
 
 	/* The buf->data may be NULL if and only if both buf->used and buf->room == 0; However, we don't
@@ -409,29 +410,31 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	if ((NULL == buf->data) && (buf_room(buf) > 0)) {
 		DE("Invalid buf: buf->data == NULL but buf->room > 0 (%ld)\n", buf_room(buf));
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_NULL_DATA);
 	}
 
 	/* And vice versa: if buf->data != NULL the buf->room must be > 0 */
 	if ((NULL != buf->data) && (0 == buf_room(buf))) {
 		DE("Invalid buf: buf->data != NULL but buf->room == 0\n");
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_BAD_ROOM);
 	}
 
+	/* If the buffer have canary, test it; if the canary is bad, stop */
 	if (buf_room(buf) > 0 && IS_BUF_CANARY(buf) && (BUFT_OK != buf_test_canary(buf))) {
 		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_room(buf);
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_BAD_CANARY);
 	}
 
+	/* TODO: Is it really a wrong situation? We can lovk and unlock the buffer */
 	/* In Read-Only buffer buf->room must be == bub->used */
 	if (IS_BUF_RO(buf) && (buf_room(buf) != buf_used(buf))) {
 		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_used(buf), buf_room(buf));
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_BAD_RO);
 	}
 
 	DDD0("Buffer is valid\n");
@@ -463,10 +466,10 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 	default:
 		DE("Unknown buffer type: %d\n", BUF_TYPE(buf));
 		TRY_ABORT();
-		return -BUFT_BAD;
+		return (-BUFT_UNKNOWN_TYPE);
 	}
 
-	return BUFT_OK;
+	return (BUFT_OK);
 }
 
 /***** TEST BUFFER TYPE ******/
@@ -576,6 +579,7 @@ int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only@*/ /*@in@*/char *data, const buf_s64_t size, const buf_s64_t len)
 /*@sets buf->data@*/
 {
+	ret_t rc = 0;
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	T_RET_ABORT(data, -BUFT_NULL_POINTER);
 
@@ -583,26 +587,25 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 	if (IS_BUF_RO(buf)) {
 		DE("Warning: tried to replace data in Read-Only buffer\n");
 		TRY_ABORT();
-		return (-EACCES);
+		return (-BUFT_RO);
+	}
+
+	if (IS_BUF_CANARY(buf)) {
+		DE("The buffer has CANARY flag; it must be unset before replacinf data\n");
+		return (-BUFT_HAS_CANARY);
 	}
 
 	buf->data = data;
-	if (BUFT_OK != buf_set_room(buf, size)) {
+	rc = buf_set_room(buf, size);
+	if (BUFT_OK != rc) {
 		DE("Can not set a new value to the buffer\n");
-		return (-BUFT_BAD);
+		return (rc);
 	}
 
-	if (BUFT_OK != buf_set_used(buf, len)) {
+	rc = buf_set_used(buf, len);
+	if (BUFT_OK != rc) {
 		DE("Can not set a new 'used' value to the buffer\n");
-		return (-BUFT_BAD);
-	}
-
-	/* If external data set we clean CANRY flag */
-	/* TODO: Don't do it. Just realloc the buffer to set CANARY in the end */
-	/* TODO: Also flag STATIC should be tested */
-	if (BUFT_OK != buf_unmark_canary(buf)) {
-		DE("Can not unset canary flag\n");
-		return (-BUFT_BAD);
+		return (rc);
 	}
 
 	return (BUFT_OK);
@@ -1135,9 +1138,8 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 	int fd;
 	int rv = -BUFT_BAD;
 
-	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	T_RET_ABORT(file, -BUFT_NULL_POINTER);
-	T_RET_ABORT(file->data, -BUFT_NULL_POINTER);
+	TESTP_BUF_DATA(buf);
+	TESTP_BUF_DATA(file);
 
 	fd = open(file->data, O_WRONLY);
 	if (fd < 0) {

@@ -23,6 +23,7 @@
 /* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
 extern int bug_get_abort_flag(void);
 #define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+#define TESTP_BUF_DATA(_Buf) do {T_RET_ABORT(_Buf, -BUFT_NULL_POINTER); T_RET_ABORT(_Buf->data, -BUFT_NULL_DATA); } while(0)
 //#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
 
 /*@access buf_t@*/

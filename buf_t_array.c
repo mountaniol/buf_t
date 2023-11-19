@@ -290,7 +290,7 @@ ret_t buf_arr_add(buf_t *buf, const void *new_data_ptr)
 /* Remove members from buffer: from 'from_memeber' (inclusive), number of members */
 ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_t num_of_new_members)
 {
-	T_RET_ABORT(buf, -BUFT_BAD);
+	TESTP_BUF_DATA(buf);
 
 	/* The start member must be > 0 */
 	if (from_member < 0) {
@@ -363,8 +363,7 @@ void *buf_arr_member_ptr(buf_t *buf, const buf_s32_t member_index)
 
 ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, buf_s32_t dest_memory_size)
 {
-	T_RET_ABORT(buf, -ECANCELED);
-	T_RET_ABORT(buf->data, -ECANCELED);
+	TESTP_BUF_DATA(buf);
 	T_RET_ABORT(dest, -ECANCELED);
 
 	if (dest_memory_size < buf->arr.size) {
