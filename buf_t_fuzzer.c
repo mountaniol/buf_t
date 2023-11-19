@@ -189,7 +189,7 @@ int   test_buf_t(char *data, size_t size)
 		buf_mark_encrypted(buf);
 		break;
 	case 4:
-		buf_mark_ro(buf);
+		buf_mark_immutable(buf);
 		break;
 	}
 

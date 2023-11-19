@@ -92,10 +92,21 @@ ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf)
 	return (buf_set_flag(buf, BUF_T_TYPE_ARR));
 }
 
-ret_t buf_mark_ro(/*@temp@*//*@in@*/buf_t *buf)
+ret_t buf_mark_immutable(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_READONLY));
+	return (buf_set_flag(buf, BUF_T_FLAG_IMMUTABLE));
+}
+
+ret_t buf_mark_locked(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	return (buf_set_flag(buf, BUF_T_FLAG_LOCKED));
+}
+
+ret_t buf_lock(/*@temp@*//*@in@*/buf_t *buf)
+{
+	return buf_mark_locked(buf);
 }
 
 ret_t buf_mark_compresed(/*@temp@*//*@in@*/buf_t *buf)
@@ -122,6 +133,35 @@ ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf)
 	return (buf_set_flag(buf, BUF_T_FLAG_CRC));
 }
 
+/***   */
+
+/**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief Test if the buffer internal manipulations are allowed.
+  They are not allowed for immutable or locked buffer
+ * @param buf_t* buf   
+ * @return ret_t 
+ * @details 
+ */
+ret_t buf_change_allowed(buf_t *buf)
+{
+	/* We can't add room to a constant buffer */
+	if (IS_BUF_IMMUTABLE(buf)) {
+		DE("Warning: tried add room to Read-Only buffer\n");
+		TRY_ABORT();
+		return (-BUFT_IS_IMMUTABLE);
+	}
+
+	/* We can't add room to a locked buffer */
+	if (IS_BUF_LOCKED(buf)) {
+		DE("Warning: tried add room to Read-Only buffer\n");
+		TRY_ABORT();
+		return (-BUFT_IS_LOCKED);
+	}
+
+	return (BUFT_OK);
+}
+
 /***** Set of functions to remove a flag from the buffer */
 
 ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf)
@@ -130,11 +170,23 @@ ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf)
 	return (buf_rm_flag(buf, BUF_T_TYPE_STRING));
 }
 
-ret_t buf_unmark_ro(/*@temp@*//*@in@*/buf_t *buf)
+ret_t buf_unmark_immutable(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_READONLY));
+	return (buf_rm_flag(buf, BUF_T_FLAG_IMMUTABLE));
 }
+
+ret_t buf_unmark_locked(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	return (buf_rm_flag(buf, BUF_T_FLAG_LOCKED));
+}
+
+ret_t buf_unlock(/*@temp@*//*@in@*/buf_t *buf)
+{
+	return buf_unmark_locked(buf);
+}
+
 
 ret_t buf_unmark_compressed(/*@temp@*//*@in@*/buf_t *buf)
 {
@@ -384,11 +436,12 @@ void buf_print_flags(/*@temp@*//*@in@*/buf_t *buf)
 	if (IS_BUF_TYPE_BIT(buf)) DDD("Buffer is BIT\n");
 	if (IS_BUF_TYPE_CIRC(buf)) DDD("Buffer is CIRC\n");
 	if (IS_BUF_TYPE_ARR(buf)) DDD("Buffer is ARRAY\n");
-	if (IS_BUF_RO(buf)) DDD("Buffer is READONLY\n");
+	if (IS_BUF_IMMUTABLE(buf)) DDD("Buffer is READONLY\n");
 	if (IS_BUF_COMPRESSED(buf)) DDD("Buffer is COMPRESSED\n");
 	if (IS_BUF_ENCRYPTED(buf)) DDD("Buffer is ENCRYPTED\n");
 	if (IS_BUF_CANARY(buf)) DDD("Buffer is CANARY\n");
 	if (IS_BUF_CRC(buf)) DDD("Buffer is CRC\n");
+	if (IS_BUF_LOCKED(buf)) DDD("Buffer is locked\n");
 }
 
 /* Validate sanity of buf_t - common for all buffers */
@@ -431,10 +484,10 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	/* TODO: Is it really a wrong situation? We can lovk and unlock the buffer */
 	/* In Read-Only buffer buf->room must be == bub->used */
-	if (IS_BUF_RO(buf) && (buf_room(buf) != buf_used(buf))) {
+	if (IS_BUF_IMMUTABLE(buf) && (buf_room(buf) != buf_used(buf))) {
 		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_used(buf), buf_room(buf));
 		TRY_ABORT();
-		return (-BUFT_BAD_RO);
+		return (-BUFT_IMMUTABLE_DAMAGED);
 	}
 
 	DDD0("Buffer is valid\n");
@@ -583,11 +636,12 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	T_RET_ABORT(data, -BUFT_NULL_POINTER);
 
-	/* Don't replace data in read-only buffer */
-	if (IS_BUF_RO(buf)) {
-		DE("Warning: tried to replace data in Read-Only buffer\n");
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
 		TRY_ABORT();
-		return (-BUFT_RO);
+		return rc;
 	}
 
 	if (IS_BUF_CANARY(buf)) {
@@ -612,16 +666,11 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
-ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size)
+ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size)
 /*@sets buf->data@*/
 {
 	int rc;
-	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-
-	if (NULL == data && size > 0) {
-		DE("Wrong arguments: data == NULL but size > 0 (%lu)\n", size);
-		return (-ECANCELED);
-	}
+	TESTP_BUF_DATA(buf);
 
 	rc = buf_set_data(buf, data, size, size);
 	if (BUFT_OK != rc) {
@@ -629,12 +678,13 @@ ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@on
 		return (rc);
 	}
 
-	if (BUFT_OK != buf_unmark_canary(buf)) {
+	rc = buf_unmark_canary(buf);
+	if (BUFT_OK != rc) {
 		DE("Can not unset CANARY flag\n");
-		return (-BUFT_BAD);
+		return (rc);
 	}
 
-	if (BUFT_OK != buf_mark_ro(buf)) {
+	if (BUFT_OK != buf_mark_immutable(buf)) {
 		DE("Can not set RO flag\n");
 		return (-BUFT_BAD);
 	}
@@ -644,39 +694,67 @@ ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@on
 /*@null@*//*@only@*/void *buf_steal_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
+	int rc;
 	/*@temp@*/void *data;
 	T_RET_ABORT(buf, NULL);
 	data = buf->data;
 	buf->data = NULL;
+
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return NULL;
+	}
+
 	if (BUFT_OK != buf_set_room(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
+		TRY_ABORT();
 		return (data);
 	}
 
 	if (BUFT_OK != buf_set_used(buf, 0)) {
 		DE("Can not set a new 'used' value to the buffer\n");
+		TRY_ABORT();
 		return (data);
 	}
 	/* TODO: If CANARY used - zero it, dont reallocate the buffer */
 	return (data);
 }
 
-/*@null@*/void *buf_2_data(/*@only@*//*@in@*//*@special@*/buf_t *buf)
+/*@null@*/void *buf_to_data(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 /*@releases buf@*/
 {
 	void *data;
 	T_RET_ABORT(buf, NULL);
+	/* This function is force to extract data and destroy the buf_t struct.
+	   I the buffer is unmutable, we remove this flag */
+
+	if (IS_BUF_IMMUTABLE(buf)) {
+		buf_unmark_immutable(buf);
+	}
+
+	/* If the buffer is locked, we stop the operation, it must be unlocked first */
+	if (IS_BUF_LOCKED(buf)) {
+		DE("Can not steal data from a locked buffer; unlock it first\n");
+		TRY_ABORT();
+		return (NULL);
+	}
+
 	data = buf_steal_data(buf);
+
 	if (BUFT_OK != buf_free(buf)) {
 		DE("Warning! Memory leak: can't clean buf_t!");
 		TRY_ABORT();
 	}
+
 	return (data);
 }
 
 /* TODO: add an 'err' aviable, this function can return NULL if there no data, but also returns NULL on an error */
-void /*@temp@*//*@null@*/ *buf_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+void /*@temp@*//*@null@*/ *buf_get_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
 	/* If buf is invalid we return '-1' costed into uint */
@@ -695,13 +773,23 @@ ret_t buf_data_is_null(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	return BUFT_NO;
 }
 
+/**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief Internal function to change ->data size 
+ * @param buf_t* buf     Buffer to realloc data
+ * @param size_t new_size New size of data
+ * @return ret_t BUFT_OK on success
+ * @details This is the internal function; we do not test
+ *  		wheather the buffer is immutable or locked.
+ *  		All there tests performed before
+ */
 static ret_t buf_realloc(/*@temp@*//*@in@*//*@special@*/buf_t *buf, size_t new_size)
 /*@allocates buf->data@*/
 {
 	void   *tmp;
 #ifdef S_SPLINT_S
 	tmp = zmalloc(buf_room(buf) + new_size);
-	memcpy(tmp, buf_data(buf), buf_room(buf));
+	memcpy(tmp, buf_get_data(buf), buf_room(buf));
 #else
 	tmp = realloc(buf->data, new_size);
 #endif
@@ -709,7 +797,7 @@ static ret_t buf_realloc(/*@temp@*//*@in@*//*@special@*/buf_t *buf, size_t new_s
 	/* Case 1: realloc can't reallocate */
 	if (NULL == tmp) {
 		DE("Realloc failed\n");
-		return (-ENOMEM);
+		return (-BUFT_ALLOCATE);
 	}
 
 	/* Case 2: realloc succeeded, new memory returned */
@@ -728,6 +816,7 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 /*@allocates buf->data@*/
 /*@uses buf->data@*/
 {
+	int rc;
 	size_t canary = 0;
 
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
@@ -735,14 +824,15 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 	if (0 == size) {
 		DE("Bad arguments: buf == NULL (%p) or size == 0 (%lu)\b", (void *)buf, size);
 		TRY_ABORT();
-		return (-EINVAL);
+		return (-BUFT_BAD_SIZE);
 	}
 
-	/* We don't free read-only buffer's data */
-	if (IS_BUF_RO(buf)) {
-		DE("Warning: tried add room to Read-Only buffer\n");
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
 		TRY_ABORT();
-		return (-EACCES);
+		return rc;
 	}
 
 	if (IS_BUF_CANARY(buf)) {
@@ -784,9 +874,9 @@ ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (expect == 0) {
-		DE("'expected' size == 0\n");
+		DE("expected size == 0\n");
 		TRY_ABORT();
-		return (-EINVAL);
+		return (-BUFT_BAD_SIZE);
 	}
 
 	if (buf_used(buf) + expect <= buf_room(buf)) {
@@ -799,17 +889,19 @@ ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@releases buf->data@*/
 {
+	int rc;
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
 	}
 
-	/* We don't free read-only buffer's data */
-	if (IS_BUF_RO(buf)) {
-		DE("Warning: tried to free Read Only buffer\n");
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
 		TRY_ABORT();
-		return (-EACCES);
+		return rc;
 	}
 
 	if (buf->data) {
@@ -841,11 +933,16 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 		DE("Warning: buffer is invalid\n");
 	}
 
-	/* We can not release the data of read-only buffer */
-	if (0 != IS_BUF_RO(buf)) {
-		DE("Warning: tried to free Read Only buffer\n");
-		TRY_ABORT();
-		return (-EACCES);
+	/* We asked to free a constant buffer; to do it, we must to remove the CONSTANT flag */
+	if (0 != IS_BUF_IMMUTABLE(buf)) {
+		buf_unmark_immutable(buf);
+	}
+
+	/* If we asked to clean a locked buffer, we return an error.
+	   The user must unlock it before it can be freed */
+	if (0 != IS_BUF_LOCKED(buf)) {
+		DE("Asked to free a locked buffer\n");
+		return (-BUFT_IS_LOCKED);
 	}
 
 	if (BUFT_OK != buf_clean(buf)) {
@@ -869,6 +966,7 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 /*@defines buf->data@*/
 /*@uses buf->data@*/
 {
+	int rc;
 	size_t new_size;
 	TESTP_ASSERT(buf, "buf is NULL");
 	TESTP_ASSERT(new_data, "buf is NULL");
@@ -880,10 +978,12 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 		return (-EINVAL);
 	}
 
-	if (0 != IS_BUF_RO(buf)) {
-		DE("Tryed to add data to Read Only buffer\n");
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
 		TRY_ABORT();
-		return (-EACCES);
+		return rc;
 	}
 
 	/* Here we switch to a type-specific function */
@@ -922,27 +1022,54 @@ buf_s64_t buf_room(/*@temp@*//*@in@*/buf_t *buf)
 
 ret_t buf_set_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t room)
 {
+	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
+
 	buf->room = room;
 	return BUFT_OK;
 }
 
 ret_t buf_inc_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 {
+	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
+
 	buf->room += inc;
 	return (BUFT_OK);
 }
 
 ret_t buf_dec_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 {
+	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (dec > buf_room(buf)) {
 		DE("Can'r decrement the room: dec > buf->room (%ld > %ld)\n", dec, buf_room(buf));
 		return -BUFT_BAD;
+	}
+
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
 	}
 
 	buf->room -= dec;
@@ -952,9 +1079,18 @@ ret_t buf_dec_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
+	int    rc;
 	size_t new_size = -1;
 
-	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	TESTP_BUF_DATA(buf);
+
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
 
 	switch (BUF_TYPE(buf)) {
 	case BUF_T_TYPE_STRING:
@@ -1069,10 +1205,18 @@ buf_t *buf_extract_field(buf_t *buf, const char *delims, const char *skip, size_
 size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, const buf_s64_t expected, const int flags)
 /*@uses buf->data@*/
 {
-	int     rc       = -BUFT_BAD;
+	int     rc;
 	ssize_t received = -1;
 
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
 
 	/* Test that we have enough room in the buffer */
 	rc = buf_test_room(buf, expected);
@@ -1100,7 +1244,7 @@ buf_t *buf_from_file(const char *filename)
 	int         fd;
 	buf_t       *buf;
 	struct stat st;
-	int         rv;
+	int         rc;
 
 
 	T_RET_ABORT(filename, NULL);
@@ -1120,15 +1264,15 @@ buf_t *buf_from_file(const char *filename)
 	buf = buf_new(st.st_size);
 	TESTP(buf, NULL);
 
-	rv = read(fd, buf->data, buf->room);
-	if (rv < 0 || (buf_s64_t)rv != buf->room) {
-		DE("Error on file read: asked %lu, read %d\n", buf->room, rv);
+	rc = read(fd, buf->data, buf->room);
+	if (rc < 0 || (buf_s64_t)rc != buf->room) {
+		DE("Error on file read: asked %lu, read %d\n", buf->room, rc);
 		close(fd);
 		buf_free(buf);
 		return (NULL);
 	}
 
-	buf->used = rv;
+	buf->used = rc;
 	close(fd);
 	return (buf);
 }
@@ -1136,10 +1280,18 @@ buf_t *buf_from_file(const char *filename)
 int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 {
 	int fd;
-	int rv = -BUFT_BAD;
+	int rc = -BUFT_BAD;
 
 	TESTP_BUF_DATA(buf);
 	TESTP_BUF_DATA(file);
+
+	rc = buf_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
 
 	fd = open(file->data, O_WRONLY);
 	if (fd < 0) {
@@ -1147,12 +1299,12 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 		return (-BUFT_BAD);
 	}
 
-	rv = write(fd, buf->data, buf->room);
+	rc = write(fd, buf->data, buf->room);
 
-	if (rv < 0 || (buf_s64_t)rv != buf->room) {
-		DE("Error on file writinf: asked %lu, read %d\n", buf->room, rv);
-		rv = -BUFT_BAD;
-	} else rv = BUFT_OK;
+	if (rc < 0 || (buf_s64_t)rc != buf->room) {
+		DE("Error on file writinf: asked %lu, read %d\n", buf->room, rc);
+		rc = -BUFT_BAD;
+	} else rc = BUFT_OK;
 
 	if (mode != 0) {
 		if (0 != fchmod(fd, mode)) {
@@ -1161,6 +1313,6 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 	}
 
 	close(fd);
-	return (rv);
+	return (rc);
 }
 

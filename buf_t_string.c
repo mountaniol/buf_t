@@ -37,11 +37,11 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	/* For string buffers only: check that the string is null terminated */
 	/* If the 'used' area not '\0' terminated - invalid */
-	if ((BUFT_NO == buf_data_is_null(buf)) && ('\0' != *((char *)buf_data(buf) + buf_used(buf)))) {
+	if ((BUFT_NO == buf_data_is_null(buf)) && ('\0' != *((char *)buf_get_data(buf) + buf_used(buf)))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
 		//DE("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_used(buf), buf_room(buf), *(buf->data + buf_used(buf)), buf->data);
 		DE("used = %ld, room = %ld, last character = |%c|, string = %s\n",
-		   buf_used(buf), buf_room(buf), *((char *)buf_data(buf) + buf_used(buf)), (char *)buf_data(buf));
+		   buf_used(buf), buf_room(buf), *((char *)buf_get_data(buf) + buf_used(buf)), (char *)buf_get_data(buf));
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -135,7 +135,7 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 
 	/* All done, now add new data into the buffer */
 	/*@ignore@*/
-	char * memory_to_copy = buf_data(buf);
+	char * memory_to_copy = buf_get_data(buf);
 	memory_to_copy += buf_used(buf);
 	memcpy(memory_to_copy, new_data, size);
 	/*@end@*/
@@ -167,7 +167,7 @@ ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 	   We start from the end, and if there is 0 detected, we start test it towards beginning using binary search */
 	while (calculated_used_size > 0) {
 		/* If found not null in the buffer... */
-		_buf_data = (char *)buf_data(buf);
+		_buf_data = (char *)buf_get_data(buf);
 		if ((char)0 != _buf_data[calculated_used_size]) {
 			break;
 		}
@@ -283,7 +283,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 		return (NULL);
 	}
 	va_start(args, format);
-	rc = vsnprintf(buf_data(buf), buf_room(buf), format, args);
+	rc = vsnprintf(buf_get_data(buf), buf_room(buf), format, args);
 	va_end(args);
 
 	if (rc < 0) {
@@ -337,8 +337,8 @@ ret_t buf_str_concat(/*@in@*//*@temp@*//*notnull*/buf_t *dst, /*@in@*//*@temp@*/
 		DE("Can not add room for string copy");
 	}
 
-	_dst_buf_data = (char *)buf_data(dst);
-	_src_buf_data = (char *)buf_data(src);
+	_dst_buf_data = (char *)buf_get_data(dst);
+	_src_buf_data = (char *)buf_get_data(src);
 	memcpy(_dst_buf_data + buf_used(dst), _src_buf_data, buf_used(src));
 	if (BUFT_OK != buf_inc_used(dst, buf_used(src))) {
 		DE("Can not increase 'used'\n");

@@ -36,15 +36,16 @@ extern int bug_get_abort_flag(void);
 #define IS_BUF_TYPE_ARR(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_ARR )
 
 /* Flags test */
-#define IS_BUF_RO(buf) (buf->flags & BUF_T_FLAG_READONLY)
+#define IS_BUF_IMMUTABLE(buf) (buf->flags & BUF_T_FLAG_IMMUTABLE)
 #define IS_BUF_COMPRESSED(buf) (buf->flags & BUF_T_FLAG_COMPRESSED)
 #define IS_BUF_ENCRYPTED(buf) (buf->flags & BUF_T_FLAG_ENCRYPTED)
 #define IS_BUF_CANARY(buf) (buf->flags & BUF_T_FLAG_CANARY)
 #define IS_BUF_CRC(buf) (buf->flags & BUF_T_FLAG_CRC)
+#define IS_BUF_LOCKED(buf) (buf->flags & BUF_T_FLAG_LOCKED)
 
 /* Type set */
 #define SET_BUF_TYPE_STRING(buf) (buf->flags |= BUF_T_TYPE_STRING)
-#define SET_BUF_TYPE_RO(buf) (buf->flags |= BUF_T_FLAG_READONLY)
+#define SET_BUF_TYPE_IMMUTABLE(buf) (buf->flags |= BUF_T_FLAG_IMMUTABLE)
 #define SET_BUF_TYPE_COMPRESSED(buf) (buf->flags |= BUF_T_FLAG_COMPRESSED)
 #define SET_BUF_TYPE_ENCRYPTED(buf) (buf->flags |= BUF_T_FLAG_ENCRYPTED)
 /*@noaccess buf_t@*/
@@ -147,7 +148,7 @@ extern ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ 
  * @return void* Returns buf->data; NULL on an error
  * @details 
  */
-extern void /*@temp@*/ *buf_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+extern void /*@temp@*/ *buf_get_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 
 /**
@@ -195,7 +196,7 @@ extern /*@null@*/ /*@in@*/buf_t *buf_new(buf_s64_t size);
  * 	Returns -ECANCELED if data == NULL but size > 0
  * 	Returns -EACCESS if this buffer already marked as read-only.
  */
-extern ret_t buf_set_data_ro(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size);
+extern ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -217,7 +218,7 @@ extern /*@null@*//*@only@*/void *buf_steal_data(/*@temp@*/ /*@in@*//*@special@*/
  * @param buf_t * buf Buffer to extract data
  * @return void* Pointer to buffer on success (buf if the buffer is empty NULL will be returned),
  */
-extern /*@null@*/void *buf_2_data(/*@only@*//*@in@*//*@special@*/buf_t *buf);
+extern /*@null@*/void *buf_to_data(/*@only@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @brief Remove data from buffer (and free the data), set buf->room = buf->len = 0
@@ -485,7 +486,7 @@ extern ret_t buf_rm_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
  * @param buf_t * buf Buffer to mark
  * @return err_t EOK on success, -EINVAL if buf is NULL
  */
-extern ret_t buf_mark_ro(/*@temp@*//*@in@*/buf_t *buf);
+extern ret_t buf_mark_immutable(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -537,9 +538,46 @@ extern ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_unmark_ro(buf_t *buf)
  * @brief Remove "read-only" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, EINVAL if buf is NULL
+ * @return BUFT_OK on success, an error code on failure
  */
-extern ret_t buf_unmark_ro(/*@temp@*//*@in@*/buf_t *buf);
+extern ret_t buf_unmark_immutable(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief Unlock locked buffer
+ * @param buf_t * buf Buffer to unmark
+ * @return BUFT_OK on success, an error code on failure* @details 
+ */
+extern ret_t buf_unmark_locked(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief Unlock locked buffer; alias for buf_unmark_locked()
+ * @param buf_t * buf Buffer to unmark
+ * @return BUFT_OK on success, an error code on failure*
+ * @details
+ */
+extern ret_t buf_unlock(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief Lock the buffer; no operations, include buf_free are
+ *  	  allowed until it locked
+ * @param buf_t* buf   Buffer to lock
+ * @return ret_t BUFT_OK on succedd, an error code on failure
+ * @details 
+ */
+ret_t buf_mark_locked(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief An alias for buf_unmark_locked(): lock a buffer, no operations, include buf_free are
+ *  	  allowed until it locked
+ * @param buf_t* buf   Buffer to lock
+ * @return ret_t BUFT_OK on success, an error code on failure
+ * @details 
+ */
+ret_t buf_lock(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)

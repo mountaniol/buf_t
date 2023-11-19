@@ -2,3 +2,5 @@
 1. Add vestion
 2. Add 'fixed size' array buffer
 3. Add bit array
+4. The CONSTANT buffer should be a type, not a flag
+5. Add types and flags tests

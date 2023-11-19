@@ -6,7 +6,7 @@
 typedef uint32_t ret_t;
 
 /* Whidth of the flags field */
-typedef uint8_t buf_t_flags_t;
+typedef uint16_t buf_t_flags_t;
 
 /* Size of 'room' and 'used':
  * 1. If this type is "uint64", the max size of data buffer is:
@@ -46,7 +46,7 @@ typedef uint32_t buf_circ_usize_t;
 /* buf_t flags */
 
 /* How many bits are reserved for buffer type */
-#define BUF_T_TYPE_WIDTH 3
+#define BUF_T_TYPE_WIDTH 8
 
 /* We use mask to isolate type from other flags */
 #define BUF_T_TYPE_MASK  0x07
@@ -61,7 +61,7 @@ typedef uint32_t buf_circ_usize_t;
 #define BUF_T_TYPE_RAW        	0
 
 /* String buffer. In this case, additional tests enabled */
-#define BUF_T_TYPE_STRING        1
+#define BUF_T_TYPE_STRING        ((buf_t_flags_t)1)
 
 /* Bit buffer */
 #define BUF_T_TYPE_BIT      		2
@@ -70,14 +70,19 @@ typedef uint32_t buf_circ_usize_t;
 #define BUF_T_TYPE_ARR      		3
 
 /* Circular buffer */
-#define BUF_T_TYPE_CIRC			4
+#define BUF_T_TYPE_CONSTANT			4
+#define BUF_T_TYPE_CIRC			5
 #define BUF_T_CIRC_HEAD_WIDTH (32)
 #define BUF_T_CIRC_MASK (0x0000FFFF)
 
 /** Flags **/
 
-/* Buffer is read only; for example you may keep a static char * / const char * in buf_t */
-#define BUF_T_FLAG_READONLY     (1 << BUF_T_TYPE_WIDTH)
+/* Buffer is immutable; it means, it created from data,
+	and can not be changed any way in the future.
+	The constant buffer can not have canary.
+	It is a special case of buffer.
+	Probably, it should be a type, not a flag */
+#define BUF_T_FLAG_IMMUTABLE     (1 << BUF_T_TYPE_WIDTH)
 
 /* Buffer is compressed */
 #define BUF_T_FLAG_COMPRESSED (1 << (BUF_T_TYPE_WIDTH + 1))
@@ -91,9 +96,13 @@ typedef uint32_t buf_circ_usize_t;
 /* Buffer is crc32 protected */
 #define BUF_T_FLAG_CRC  (1 << (BUF_T_TYPE_WIDTH + 4))
 
-/* Buffer can not chane its size:
-   we might need ot for implmenet a circular buffer ot top of buf ARRAY */
+/* Buffer can not change its size:
+   we might need it for implmenet a circular buffer ot top of buf ARRAY */
 #define BUF_T_FLAG_FIXED_SIZE  (1 << (BUF_T_TYPE_WIDTH + 5))
+
+/* Buffer is locked, not data manipulation is allowed.
+   The buffer can be any type, and it can be locked and ulocked dynamically */
+#define BUF_T_FLAG_LOCKED  (1 << (BUF_T_TYPE_WIDTH + 6))
 
 /* Size of canary */
 //typedef uint32_t buf_t_canary_t;

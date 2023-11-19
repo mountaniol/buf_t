@@ -24,8 +24,11 @@ typedef enum {
 	BUFT_ALLOCATE,  /* For some reason could not allocate memory */
 	BUFT_DECREMENT,  /* For some reason could not allocate memory */
 	BUFT_BAD_USED,  /* For some reason could not allocate memory */
+	BUFT_BAD_SIZE,  /* A bad size passed in argument */
 	BUFT_BAD_ROOM,  /* For some reason could not allocate memory */
-	BUFT_BAD_RO,  /* The buffer is read only, but looks like the buffer is invalid */
+	BUFT_IMMUTABLE_DAMAGED,  /* The buffer is constant, but looks like the buffer is invalid */
+	BUFT_IS_IMMUTABLE,  /* Caller asked for an operation forbidden for a constant buffer  */
+	BUFT_IS_LOCKED,  /* Caller asked for an operation forbidden for a locked buffer  */
 	BUFT_RO,  /* Buffer is read only and can not be manipulated */
 	BUFT_UNKNOWN_TYPE,  /* Unknown buffer type; it it a severe problem indicating version mismatcj or memory corruption */
 	BUFT_HAS_CANARY,  /* The buffer is asked to set data, but the buffer has canary. Before set new ->data, the CANARY flag should be removed */
