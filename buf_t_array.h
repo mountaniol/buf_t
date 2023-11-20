@@ -104,6 +104,20 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf);
 ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t num_of_new_members);
 
 /**
+ * @author Sebastian Mountaniol (11/19/23)
+ * @brief Add new members as a memory with size, not number of
+ *  	  members
+ * @param buf_t* buf     Buffer to add new mebers as a memory
+ * @param const char* new_data Pointer to memory containing
+ *  			members to be added
+ * @param const buf_s64_t size    Size of the mmeory in bytes
+ * @return ret_t BUFT_OK on success, arror code on faulure
+ * @details The size of the memory to add must be exact multiply
+ *  		of one memeber size
+ */
+extern ret_t buf_arr_add_memory(buf_t *buf, /*@temp@*//*@in@*/const char *new_data, const buf_s64_t size);
+
+/**
  * @author Sebastian Mountaniol (11/18/23)
  * @brief Add one member to the beffer
  * @param buf_t* buf         Buffer to add a new member
@@ -183,4 +197,14 @@ void *buf_arr_member_ptr(buf_t *buf, const buf_s32_t member_index);
  */
 ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, buf_s32_t dest_memory_size);
 
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Clean the array buffer; the allocated memory is
+ *  	  released.
+ * @param buf_t* buf   Buffer to clean
+ * @return ret_t BUFT_OK on success, a gegative error code on an
+ *  	   error
+ * @details 
+ */
+extern ret_t buf_arr_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 #endif /* _BUF_T_ARRAY_USED_H_ */

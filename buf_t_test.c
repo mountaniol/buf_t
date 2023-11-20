@@ -45,7 +45,7 @@ void test_buf_new_zero_size(int test_num)
 
 	//if (buf->data != NULL) {
 	if (buf_data_is_null(buf) == BUFT_NO) {
-		printf("0 size buffer: data != NULL (%p)\n", buf_get_data(buf));
+		printf("0 size buffer: data != NULL (%p)\n", buf_get_data_ptr(buf));
 		PFAIL("0 size buffer", test_num);
 		abort();
 	}
@@ -92,7 +92,7 @@ void test_buf_new_increasing_size(int test_num)
 		//if (NULL == buf->data) {
 		if (buf_data_is_null(buf) == BUFT_YES) {
 			/*@ignore@*/
-			printf("increasing size buffer: data == NULL (%p), asked size: %zu, iteration: %d\n", buf_get_data(buf), size, i);
+			printf("increasing size buffer: data == NULL (%p), asked size: %zu, iteration: %d\n", buf_get_data_ptr(buf), size, i);
 			/*@end@*/
 			PFAIL("increasing size buffer", test_num);
 			abort();
@@ -152,12 +152,12 @@ void test_buf_string(size_t buffer_init_size, int test_num)
 #endif
 
 	//if (strlen(buf->data) != strlen(str)) {
-	if (strlen(buf_get_data(buf)) != strlen(str)) {
+	if (strlen(buf_get_data_ptr(buf)) != strlen(str)) {
 		/*@ignore@*/
 		printf("[After buf_add: wrong string len of buf->data]\n");
 		printf("[Added string len = %zu]\n", strlen(str));
 		//printf("[buf->data len = %zu]\n", strlen(buf->data));
-		printf("[buf->data len = %zu]\n", strlen(buf_get_data(buf)));
+		printf("[buf->data len = %zu]\n", strlen(buf_get_data_ptr(buf)));
 		/*@end@*/
 		PFAIL("buf_string", test_num);
 		abort();
@@ -190,13 +190,13 @@ void test_buf_string(size_t buffer_init_size, int test_num)
 	}
 
 	//if (strlen(buf->data) != (strlen(str) + strlen(str2))) {
-	if (strlen(buf_get_data(buf)) != (strlen(str) + strlen(str2))) {
+	if (strlen(buf_get_data_ptr(buf)) != (strlen(str) + strlen(str2))) {
 		/*@ignore@*/
 		printf("[buf->used != added strings]\n");
 		//printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf->data), strlen(str) + strlen(str2));
-		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf_get_data(buf)), strlen(str) + strlen(str2));
+		printf("[buf->used = %zu, added strings len = %zu]\n", strlen(buf_get_data_ptr(buf)), strlen(str) + strlen(str2));
 		//printf("[String is: |%s|, added strings: |%s%s|]\n", buf->data, str, str2);
-		printf("[String is: |%s|, added strings: |%s%s|]\n", (char *)buf_get_data(buf), str, str2);
+		printf("[String is: |%s|, added strings: |%s%s|]\n", (char *)buf_get_data_ptr(buf), str, str2);
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		/*@end@*/
@@ -247,7 +247,7 @@ void test_buf_pack_string(int test_num)
 	PSTEP("Adding str");
 
 	//if (strlen(buf->data) != strlen(str)) {
-	if (strlen(buf_get_data(buf)) != strlen(str)) {
+	if (strlen(buf_get_data_ptr(buf)) != strlen(str)) {
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
@@ -268,7 +268,7 @@ void test_buf_pack_string(int test_num)
 	}
 
 	//if ((buf_s64_t)strlen(buf->data) != (len + len2)) {
-	if ((buf_s64_t)strlen(buf_get_data(buf)) != (len + len2)) {
+	if ((buf_s64_t)strlen(buf_get_data_ptr(buf)) != (len + len2)) {
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
@@ -307,7 +307,7 @@ void test_buf_pack_string(int test_num)
 	}
 
 	//if (0 != strcmp(buf->data, con_str)) {
-	if (0 != strcmp(buf_get_data(buf), con_str)) {
+	if (0 != strcmp(buf_get_data_ptr(buf), con_str)) {
 		PFAIL("buf_pack_string: Strings are differ", test_num);
 		abort();
 	}
@@ -353,7 +353,7 @@ void test_buf_str_concat(int test_num)
 		abort();
 	}
 
-	if (BUFT_OK != buf_is_string(buf1)) {
+	if (BUFT_OK != buf_type_is_string(buf1)) {
 		PFAIL("buf_str_concat: buf1 is not a string buffer", test_num);
 		abort();
 	}
@@ -371,7 +371,7 @@ void test_buf_str_concat(int test_num)
 		abort();
 	}
 
-	if (BUFT_OK != buf_is_string(buf2)) {
+	if (BUFT_OK != buf_type_is_string(buf2)) {
 		PFAIL("buf_str_concat: buf2 is not a string buffer", test_num);
 		abort();
 	}
@@ -386,7 +386,7 @@ void test_buf_str_concat(int test_num)
 	PSTEP("buf_str_concat OK");
 
 	//if ((buf_s64_t)strlen(buf1->data) != (len1 + len2)) {
-	if ((buf_s64_t)strlen(buf_get_data(buf1)) != (len1 + len2)) {
+	if ((buf_s64_t)strlen(buf_get_data_ptr(buf1)) != (len1 + len2)) {
 		PFAIL("buf_str_concat: bad length", test_num);
 		abort();
 	}
@@ -425,7 +425,7 @@ void test_buf_str_concat(int test_num)
 	}
 
 	//if (0 != strcmp(buf1->data, con_str)) {
-	if (0 != strcmp(buf_get_data(buf1), con_str)) {
+	if (0 != strcmp(buf_get_data_ptr(buf1), con_str)) {
 		PFAIL("buf_str_concat: string is not the same", test_num);
 		abort();
 	}
@@ -504,7 +504,7 @@ void test_buf_pack(int test_num)
 	/* Compare memory */
 	//if (0 != memcmp(buf->data, buf_data, buf_data_size)) {
 
-	if (0 != memcmp(buf_get_data(buf), _buf_data, buf_data_size)) {
+	if (0 != memcmp(buf_get_data_ptr(buf), _buf_data, buf_data_size)) {
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
@@ -622,7 +622,7 @@ void test_buf_canary(int test_num)
 
 	/* Compare memory */
 	//if (0 != memcmp(buf->data, buf_data, buf_data_size - 1)) {
-	if (0 != memcmp(buf_get_data(buf), _buf_data, buf_data_size - 1)) {
+	if (0 != memcmp(buf_get_data_ptr(buf), _buf_data, buf_data_size - 1)) {
 		PFAIL("buf_canary: buffer is wrong", test_num);
 		if (BUFT_OK != buf_free(buf)) {
 			PRINT("Can't release buffer");
@@ -647,8 +647,8 @@ void test_buf_canary(int test_num)
 
 	/* Now we copy the full buffer into buf->data and such we break the canary pattern */
 	//memcpy(buf->data, buf_data, buf_data_size);
-	if (NULL != buf_get_data(buf)) {
-		memcpy(buf_get_data(buf), _buf_data, buf_data_size);
+	if (NULL != buf_get_data_ptr(buf)) {
+		memcpy(buf_get_data_ptr(buf), _buf_data, buf_data_size);
 	} else {
 		PFAIL("buf_canary: buf_data(buf) is NULL - must be not", test_num);
 		abort();
@@ -746,7 +746,7 @@ void test_buf_array_zero_size(int test_num)
 
 	//if (buf->data != NULL) {
 	if (buf_data_is_null(buf) == BUFT_NO) {
-		printf("0 size buffer: data != NULL (%p)\n", buf_get_data(buf));
+		printf("0 size buffer: data != NULL (%p)\n", buf_get_data_ptr(buf));
 		PFAIL("0 size buffer", test_num);
 		abort();
 	}
@@ -809,7 +809,7 @@ void test_buf_array_allocate_with_size(int test_num, int element_size, int num_o
 
 	//if (buf->data != NULL) {
 	if (buf_data_is_null(buf) == BUFT_YES) {
-		printf("Array size buffer: data == NULL (%p)\n", buf_get_data(buf));
+		printf("Array size buffer: data == NULL (%p)\n", buf_get_data_ptr(buf));
 		PFAIL("Array buffer, buf_data_is_null(buf) == YES", test_num);
 		abort();
 	}
@@ -852,7 +852,7 @@ void test_buf_array_allocate_add(int test_num, int num_of_elements)
 	PSTEP("Added memebers");
 
 	if (buf_data_is_null(buf) == BUFT_YES) {
-		printf("Array size buffer: data == NULL (%p)\n", buf_get_data(buf));
+		printf("Array size buffer: data == NULL (%p)\n", buf_get_data_ptr(buf));
 		PFAIL("Array buffer, buf_data_is_null(buf) == YES", test_num);
 		abort();
 	}
@@ -904,7 +904,7 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 	PSTEP("Added memebers");
 
 	if (buf_data_is_null(buf) == BUFT_YES) {
-		printf("Array size buffer: data == NULL (%p)\n", buf_get_data(buf));
+		printf("Array size buffer: data == NULL (%p)\n", buf_get_data_ptr(buf));
 		PFAIL("Array buffer, buf_data_is_null(buf) == YES", test_num);
 		abort();
 	}

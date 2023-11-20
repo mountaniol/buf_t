@@ -21,8 +21,35 @@
 //#include "mp-common.h"
 
 /* This is a switchable version; depending on the global abort flag it will abort or rturn an error */
+#define ABORT_ON_ERROR_OFF (0)
+#define ABORT_ON_ERROR_ON (1)
+
+/* This function documented later in this header */
 extern int bug_get_abort_flag(void);
-#define T_RET_ABORT(x, ret) do {if(NULL == x) {if(0 != bug_get_abort_flag()) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort();} else {DDE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}}} while(0)
+
+/**
+ * @define TRY_ABORT
+ * @brief If there is 'abort on error' is set, this macro stops
+ *  execution and generates core file
+ */
+#define TRY_ABORT() do{ if(ABORT_ON_ERROR_ON == bug_get_abort_flag()) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
+
+/**
+ * @define T_RET_ABORT
+ * @brief This macro wither abort if abort flag is set ON, or return with error, if no abort flag set.
+ * @details See bug_get_abort_flag() for more details
+ */
+#define T_RET_ABORT(x, ret) do {if (NULL == x) {TRY_ABORT(); DE("[[ ERROR! ]]: Pointer %s is NULL\n", #x); return ret;}} while(0)
+								
+
+/**
+ * @define TESTP_BUF_DATA
+ * @brief This macro test both the buffer, and the buffer->data.
+ *  	  In case one of these is NULL, it return from function
+ *  	  with error or, if abort flag set to ON (see
+ *  	  bug_get_abort_flag()) it aborts execution with core
+ *  	  file.
+ */
 #define TESTP_BUF_DATA(_Buf) do {T_RET_ABORT(_Buf, -BUFT_NULL_POINTER); T_RET_ABORT(_Buf->data, -BUFT_NULL_DATA); } while(0)
 //#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
 
@@ -30,6 +57,7 @@ extern int bug_get_abort_flag(void);
 
 /* Types test */
 #define BUF_TYPE(buf) (buf->flags & BUF_T_TYPE_MASK)
+#define IS_BUF_TYPE_RAW(buf) ( BUF_TYPE(buf) == 0 )
 #define IS_BUF_TYPE_STRING(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_STRING )
 #define IS_BUF_TYPE_BIT(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_BIT )
 #define IS_BUF_TYPE_CIRC(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_CIRC )
@@ -79,25 +107,30 @@ extern int bug_get_abort_flag(void);
 /* How much bytes will be transmitted to send buf_t + its actual data */
 #define BUF_T_NET_SEND_SIZE(b) (BUF_T_STRUCT_NET_SIZE + b->used)
 
-
 /**
- * @author Sebastian Mountaniol (12/17/21)
- * buf_t_flags_t bug_get_abort_flag(void)
- * 
- * @brief Get the status of global "abort" flag. If this flag is
- *  	  set, the buf_t will abort on errors and generate a
- *  	  core file
- * @param void  
- * 
- * @return buf_t_flags_t Status of 'abort' flag. 0 means it is
- *  	   not ebabled.
- * @details 
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief This function returns abort flag. If abort flag is set
+ *  	  to ON, the execution will stopped in a function where
+ *  	  the error occurs, and a core file will be generated.
+ * @return int ABORT_ON_ERROR_ON if the abort flag is set,
+ *  	   ABORT_ON_ERROR_OFF if the abort flag is not set
+ * @details Abort flag is set / unset with functions
+ *  		buf_set_abort_flag(), buf_unset_abort_flag()
  */
 extern int bug_get_abort_flag(void);
 
-/** If there is 'abort on error' is set, this macro stops
- *  execution and generates core file */
-#define TRY_ABORT() do{ if(0 != bug_get_abort_flag()) {DE("Abort in %s +%d\n", __FILE__, __LINE__);abort();} } while(0)
+/**
+ * @define T_RET_ABORT
+ * @brief This macro either abort execution or return an error
+ *  	  'ret'
+ * @details This macro depends on the abort flag, returned from
+ *  		function bug_get_abort_flag(). If the abort flag is
+ *  		set to ABORT_ON_ERROR_ON, it aborts execution;
+ *  		otherwise, if the flag is ABORT_ON_ERROR_OFF,
+ *  		it returns the error 'ret.' This macro is useful for
+ *  		debug when we want to trace where the problem
+ *  		starts.
+ */
 
 /**
  * @author Sebastian Mountaniol (16/06/2020)
@@ -132,7 +165,7 @@ extern void buf_default_flags(buf_t_flags_t f);
  * @param char * data Data to set into the buf_t
  * @param size_t size Size of the new 'data'
  * @param size_t len Length of data in the buffer, user must provide it
- * @return err_t Returns EOK on success
+ * @return err_t Returns BUFT_OK on success
  *  Return -EACCESS if the buffer is read-only
  *  Return -EINVAL if buffer or data is NULL
  */
@@ -148,7 +181,7 @@ extern ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ 
  * @return void* Returns buf->data; NULL on an error
  * @details 
  */
-extern void /*@temp@*/ *buf_get_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+extern void /*@temp@*/ *buf_get_data_ptr(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 
 /**
@@ -169,7 +202,7 @@ extern ret_t buf_data_is_null(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
  * @func err_t buf_is_valid(buf_t *buf)
  * @brief Test bufer validity
  * @param buf_t * buf Buffer to test
- * @return err_t Returns EOK if the buffer is valid.
+ * @return err_t Returns BUFT_OK if the buffer is valid.
  * 	Returns EINVAL if the 'buf' == NULL.
  * 	Returns EBAD if this buffer is invalid.
  */
@@ -192,11 +225,11 @@ extern /*@null@*/ /*@in@*/buf_t *buf_new(buf_s64_t size);
  * @param buf_t * buf Buffer to set read-only
  * @param char * data Data the buf_t will contain. It is legal if this parameter == NULL
  * @param size_t size Size of the buffer. If data == NULL this argument must be 0
- * @return err_t EOK on success
+ * @return err_t BUFT_OK on success
  * 	Returns -ECANCELED if data == NULL but size > 0
  * 	Returns -EACCESS if this buffer already marked as read-only.
  */
-extern ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size);
+extern ret_t buf_set_data_immutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)
@@ -225,7 +258,7 @@ extern /*@null@*/void *buf_to_data(/*@only@*//*@in@*//*@special@*/buf_t *buf);
  * @func err_t buf_clean(buf_t *buf)
  * @author se (16/05/2020)
  * @param buf Buffer to remove data from
- * @return err_t EOK if all right
+ * @return err_t BUFT_OK if all right
  * 	EINVAL if buf is NULL pointer
  * 	EACCESS if the buffer is read-only, buffer kept untouched
  * @details If the buffer is invalid (see buf_is_valid()),
@@ -242,7 +275,7 @@ extern ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
  * @author se (06/04/2020)
  * @param buf_t * buf Buffer to grow
  * @param size_t size How many byte to add
- * @return int EOK on success
+ * @return int BUFT_OK on success
  * 	-EINVAL if buf == NULL
  * 	-EACCESS if buf is read-only
  *  -ENOMEM if allocation of additional space failed. In this
@@ -260,7 +293,7 @@ extern ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t s
  * @author se (06/04/2020)
  * @param buf_t * buf Buffer to test
  * @param size_t expect How many bytes will be added
- * @return int EOK if the buffer has sufficient room or if room added succesfully
+ * @return int BUFT_OK if the buffer has sufficient room or if room added succesfully
  * 	EINVAL if buf is NULL or 'expected' == 0
  * 	Also can return all error statuses of buf_add_room()
  */
@@ -271,7 +304,7 @@ extern ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect);
  * @brief Free buf; if buf->data is not empty, free buf->data
  * @author se (03/04/2020)
  * @param buf_t * buf Buffer to remove
- * @return int EOK on success
+ * @return int BUFT_OK on success
  * 	EINVAL is the buf is NULL pointer
  * 	EACCESS if the buf is read-only
  * 	ECANCELED if the buffer is invalid
@@ -286,7 +319,7 @@ extern ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf);
  * @param buf_t * buf Buffer to append to buf->data
  * @param const char* new_data This buffer will be appended (copied) to the tail of buf->data
  * @param const size_t size Size of 'new_data' in bytes
- * @return int EOK on success
+ * @return int BUFT_OK on success
  * 	EINVAL if: 'buf' == NULL, or 'new_data' == NULL, or 'size' == 0
  * 	EACCESS if the 'buf' is read-only
  * 	ENOMEM if new memory can't be allocated
@@ -325,7 +358,7 @@ extern ret_t buf_set_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used);
  *  		  buf->used
  * @param inc - The value to add to the buf->used
  * 
- * @return ret_t OK on success, BAD on an error
+ * @return ret_t BUFT_OK on success, BAD on an error
  * @details For now, this operation not tested for out of limit
  *  		situation. So if ->used value it too high the
  *  		operation will be still executed 
@@ -341,10 +374,83 @@ extern ret_t buf_inc_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used);
  * @param dec - Decrement ->used by this value; the 'used' must
  *  		   be > 0 (it can not be < 0, however)
  * 
- * @return ret_t OK on success, BAD on an error
+ * @return ret_t BUFT_OK on success, BAD on an error
  * @details 
  */
 extern ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer is immutable
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer is immutable,
+ *  	   BUFT_NO if the buffer is not immutable
+ * @details 
+ */
+extern ret_t buf_is_immutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer is compressed
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer is compressed,
+ *  	   BUFT_NO if the buffer is not compressed
+ * @details 
+ */
+extern ret_t buf_is_compressed(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer is encrypted
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer is encrypted,
+ *  	   BUFT_NO if the buffer is not encrypted
+ * @details 
+ */
+extern ret_t buf_is_encrypted(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer has canary mark 
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer has the canary
+ *  	   mark, BUFT_NO if the buffer doesn't have the canary
+ *  	   mark
+ * @details 
+ */
+extern ret_t buf_is_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer is checksum protected
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer is checksum
+ *  	   protected, BUFT_NO if the buffer is not checksum
+ *  	   protected
+ * @details 
+ */
+extern ret_t buf_is_crc(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer has fixed size
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer is a fixed size
+ *  	   buffer, BUFT_NO if it is not a fixed size
+ *  	   buffer
+ * @details 
+ */
+extern ret_t buf_is_fixed(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer is locked
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t Return BUFT_YES is the buffer is locked,
+ *  	   BUFT_NO if the buffer is not locked
+ * @details A locked buffer is immutable until it unlocked
+ */
+extern ret_t buf_is_locked(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
@@ -364,7 +470,7 @@ extern buf_s64_t buf_room(/*@temp@*/ /*@in@*/buf_t *buf);
  * @param buf - Buffer to set the a value
  * @param room - The new value of buf->room to set
  * 
- * @return ret_t OK on success, BAD on an error
+ * @return ret_t BUFT_OK on success, BAD on an error
  * @details 
  */
 extern ret_t buf_set_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t room);
@@ -377,7 +483,7 @@ extern ret_t buf_set_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t room);
  * @param buf - Buffer to increment the buf->room value
  * @param inc - The value to add to buf->room
  * 
- * @return ret_t OK on sucess, BAD on an error
+ * @return ret_t BUFT_OK on sucess, BAD on an error
  * @details 
  */
 extern ret_t buf_inc_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t inc);
@@ -390,7 +496,7 @@ extern ret_t buf_inc_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t inc);
  * @param buf - The buffer to decrement buf->room
  * @param dec - The value to substract from nuf->room
  * 
- * @return ret_t OK on sucess, BAD on an error
+ * @return ret_t BUFT_OK on sucess, BAD on an error
  * @details The 'dec' must be less or equal to the buf->room,
  *  		else BAD error returned and no value decremented
  */
@@ -404,9 +510,9 @@ extern ret_t buf_dec_room(/*@temp@*/ /*@in@*/buf_t *buf, buf_s64_t dec);
  *    its size won't change anymore.
  *    The unused memory will be released.
  * @param buf_t * buf Buffer to pack
- * @return err_t EOK on success;
- * 	EOK if this buffer is empty (buf->data == NULL) EOK returned
- * 	EOK if this buffer should not be packed (buf->used == buf->room)
+ * @return err_t BUFT_OK on success;
+ * 	BUFT_OK if this buffer is empty (buf->data == NULL) BUFT_OK returned
+ * 	BUFT_OK if this buffer should not be packed (buf->used == buf->room)
  * 	EINVAL id 'buf' == NULL
  * 	ECANCELED if this buffer is invalid (see buf_is_valid)
  * 	ENOMEM if internal realloc can't reallocate / shring memory
@@ -441,7 +547,7 @@ extern void buf_restore_flags(buf_t_flags_t flags);
  * @brief Mark (set flag) the buf as a buffer containing string buffer
  * data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, -EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, -EINVAL if buf is NULL
  */
 extern ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -450,7 +556,7 @@ extern ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf);
  * @brief Mark (set flag) the buf as a buffer containing an
  * array
  * @param buf_t * buf Buffer to mark as array
- * @return err_t EOK on success, -EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, -EINVAL if buf is NULL
  */
 extern ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -462,7 +568,8 @@ extern ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf);
  * @param buf - Buffer to set flags
  * @param f - Flag(s) to set
  *
- * @return ret_t OK on success, -EINVAL if NULL pointer received
+ * @return ret_t BUFT_OK on success, -EINVAL if NULL pointer
+ *  	   received
  * @details 
  */
 extern ret_t buf_set_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
@@ -484,7 +591,7 @@ extern ret_t buf_rm_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
  * @func err_t buf_mark_ro(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing read-only data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, -EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, -EINVAL if buf is NULL
  */
 extern ret_t buf_mark_immutable(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -493,7 +600,7 @@ extern ret_t buf_mark_immutable(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_mark_compresed(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing compressed data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_mark_compresed(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -502,7 +609,7 @@ extern ret_t buf_mark_compresed(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_mark_encrypted(buf_t *buf)
  * @brief Mark (set flag) the buf as a buffer containing encrypted data
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_mark_encrypted(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -511,7 +618,7 @@ extern ret_t buf_mark_encrypted(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_mark_canary(buf_t *buf)
  * @brief Mark (set flag) that the buf has canary word in the end of the buffer
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_mark_canary(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -520,16 +627,28 @@ extern ret_t buf_mark_canary(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_mark_canary(buf_t *buf)
  * @brief Mark (set flag) that the buf has CRC word in the end of the buffer
  * @param buf_t * buf Buffer to mark
- * @return err_t EOK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test whether the buffer can not be changed or not. The
+ *  	  buffer can not be changed if it IMMUTABLE or LOCKED
+ * @param buf_t* buf   Buffer to test
+ * @return ret_t BUFT_YES if the buffer can be changed,
+ *  	   -BUFT_IS_IMMUTABLE if the buffer is immutable,
+ *  		-BUFT_IS_LOCKED if the buffer is locked
+ * @details 
+ */
+extern ret_t buf_is_change_allowed(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_unmark_string(buf_t *buf)
  * @brief Remove "string" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -584,7 +703,7 @@ ret_t buf_lock(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_unmark_compresed(buf_t *buf)
  * @brief Remove "compressed" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_unmark_compressed(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -593,7 +712,7 @@ extern ret_t buf_unmark_compressed(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_unmark_encrypted(buf_t *buf)
  * @brief Remove "encryptes" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_unmark_encrypted(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -602,7 +721,7 @@ extern ret_t buf_unmark_encrypted(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_unmark_canary(buf_t *buf)
  * @brief Remove "canary" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_unmark_canary(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -611,7 +730,7 @@ extern ret_t buf_unmark_canary(/*@temp@*//*@in@*/buf_t *buf);
  * @func err_t buf_unmark_crc(buf_t *buf)
  * @brief Remove "crc" mark (unset flag) from the buf
  * @param buf_t * buf Buffer to unmark
- * @return err_t OK on success, EINVAL if buf is NULL
+ * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf);
 
@@ -622,7 +741,7 @@ extern ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf);
  *  	  buf_t must be marked as CANARY, else an error
  *  	  returned.
  * @param buf_t * buf Buffer to set CANARy pattern
- * @return err_t EOK on success,
+ * @return err_t BUFT_OK on success,
  * 	EINVAL if buf is NULL,
  *  ECANCELED if the buf does not have CANARY or if the CANARY
  *  pattern is not valid right after it set
@@ -635,7 +754,7 @@ extern ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
  * @func err_t buf_force_canary(buf_t *buf)
  * @brief Set CAANRY mark in the end of the buffer and apply ANARY flag on the buffer
  * @param buf_t * buf Buffer to set CANARY
- * @return err_t EOK on success,
+ * @return err_t BUFT_OK on success,
  * 	-EINVAL if buf is NULL,
  * 	-ECANCELED if the buffer is too small to set CANARY mark,
  * 	or one of the but_set_canary() function errors
@@ -649,7 +768,7 @@ extern ret_t buf_force_canary(/*@temp@*//*@in@*/ buf_t *buf);
  * @func err_t buf_test_canary(buf_t *buf)
  * @brief Check that CANARY mark is untouched
  * @param buf_t * buf Buffer to check
- * @return err_t EOK if CANARY word is untouched,
+ * @return err_t BUFT_OK if CANARY word is untouched,
  * 	-EINVAL if the buf is NULL,
  * 	-ECANCELED if buf is not marked as a CANARY buffer,
  * 	EBAD if canary mark is invalid
@@ -674,26 +793,37 @@ extern buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/ buf_t *buf)
  */
 extern void buf_print_flags(/*@temp@*//*@in@*/ buf_t *buf);
 
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Test wjether this buffer is a raw buffer
+ * @param buf_t* buf   Buffer to test
+ * @return int BUFT_YES if the buffer is a raw buffer,
+ *  	   BUFT_NO if the buffer is not a raw buffer
+ * @details A raw buffer is a buffer with no type set.
+ */
+extern int buf_type_is_raw(/*@temp@*//*@in@*/buf_t *buf);
+
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func int buf_is_string(buf_t *buf)
  * @brief Test if the buffer is a string buffer
  * @param buf_t * buf Buffer to check
- * @return int EOK if the buf a string buffer
+ * @return int BUFT_YES if the buf a string buffer
  * 	Returns -EINVAL if buf is NULL
  * 	Returns 1 if not a string buffer
  */
-extern int buf_is_string(/*@temp@*/ /*@in@*/buf_t *buf);
+extern int buf_type_is_string(/*@temp@*/ /*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (11/7/23)
  * @brief Test if the buffer is an array buffer
  * @param buf_t * buf Buffer to check
- * @return int EOK if the buf an array buffer
+ * @return int BUFT_YES if the buf an array buffer
  * 	Returns -EINVAL if buf is NULL
  * 	Returns 1 if not an array buffer
  */
-extern int buf_is_array(/*@temp@*//*@in@*/buf_t *buf);
+extern int buf_type_is_array(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -702,11 +832,11 @@ extern int buf_is_array(/*@temp@*//*@in@*/buf_t *buf);
  * @brief Test if the buffer is a bit buffer
  * @param buf - Buffer to test
  * 
- * @return int OK if it is a bit buffer, -EINVAL if the buffer
- *  	   is NULL, 1 if the buffer is not a bit buffer
+ * @return int BUFT_OK if it is a bit buffer, -EINVAL if the
+ *  	   buffer is NULL, 1 if the buffer is not a bit buffer
  * @details 
  */
-extern int buf_is_bit(/*@temp@*//*@in@*/buf_t *buf);
+extern int buf_type_is_bit(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -715,18 +845,18 @@ extern int buf_is_bit(/*@temp@*//*@in@*/buf_t *buf);
  * @brief Test if the buffer is a circular buffer
  * @param buf - Buffer to test
  * 
- * @return int - OK  if the buffer is a circular buffer, 1 if
- *  	   not, -EINVAL if the buffer id NULL pointer
+ * @return int - BUFT_OK  if the buffer is a circular buffer,
+ *  	   1 if not, -EINVAL if the buffer id NULL pointer
  * @details 
  */
-extern int buf_is_circ(/*@temp@*/ /*@in@*/buf_t *buf);
+extern int buf_type_is_circ(/*@temp@*/ /*@in@*/buf_t *buf);
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_detect_used(buf_t *buf)
  * @brief If you played with the buffer's data (for example, copied / replaced tezt in the
  *    buf->data) this function will help to detect right buf->used value.
  * @param buf_t * buf Buffer to analyze
- * @return err_t EOK on succes + buf->used set to a new value
+ * @return err_t BUFT_OK on succes + buf->used set to a new value
  * 	EINVAL is 'buf' is NULL
  * 	ECANCELED if the buf is invalid or if the buf is empty
  */
@@ -767,7 +897,7 @@ extern buf_t *buf_from_file(const char *filename);
  *  			 and content of the buf_t is saved,
  *  			 this function will change the file permission
  *  			 accordingly to the given 'mode'
- * @return int OK on success, a negative value on an error
+ * @return int BUFT_OK on success, a negative value on an error
  * @details See 'man fchmod' for mode_t format
  */
 extern int buf_to_file(buf_t *buf, buf_t *file, mode_t mode);

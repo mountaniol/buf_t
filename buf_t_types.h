@@ -49,7 +49,7 @@ typedef uint32_t buf_circ_usize_t;
 #define BUF_T_TYPE_WIDTH 8
 
 /* We use mask to isolate type from other flags */
-#define BUF_T_TYPE_MASK  0x07
+#define BUF_T_TYPE_MASK  0xFF
 
 
 /* * Types **
@@ -69,9 +69,7 @@ typedef uint32_t buf_circ_usize_t;
 /* Array of elements */
 #define BUF_T_TYPE_ARR      		3
 
-/* Circular buffer */
-#define BUF_T_TYPE_CONSTANT			4
-#define BUF_T_TYPE_CIRC			5
+#define BUF_T_TYPE_CIRC			4
 #define BUF_T_CIRC_HEAD_WIDTH (32)
 #define BUF_T_CIRC_MASK (0x0000FFFF)
 

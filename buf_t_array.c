@@ -24,7 +24,7 @@ buf_s32_t buf_arr_members(buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (BUFT_NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_type_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -39,7 +39,7 @@ ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (BUFT_NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_type_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -61,7 +61,7 @@ buf_s32_t buf_arr_member_size(buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (BUFT_NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_type_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -76,7 +76,7 @@ ret_t buf_set_arr_member_size(buf_t *buf, buf_s32_t new_size)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* Test that this is an array buffer */
-	if (BUFT_NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_type_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -96,7 +96,7 @@ buf_s64_t buf_arr_used(buf_t *buf)
 
 	/* Test that this is an array buffer;
 	   if it is not, cancel the operation */
-	if (BUFT_NO == buf_is_array(buf)) {
+	if (BUFT_NO == buf_type_is_array(buf)) {
 		DE("Buffer is not an array buffer");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -150,7 +150,7 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* TEST: The type must be ARRAY */
-	if (BUFT_OK != buf_is_array(buf)) {
+	if (BUFT_OK != buf_type_is_array(buf)) {
 		DE("Buffer is not an array type\n");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -281,6 +281,25 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 	return BUFT_OK;
 }
 
+ret_t buf_arr_add_memory(buf_t *buf, /*@temp@*//*@in@*/const char *new_data, const buf_s64_t size)
+{
+	/* The size of memory can not be less than size of array member */
+	if (size > buf->arr.size) {
+		DE("Wrong size: the size of memory less than size of a member\n");
+		return (-BUFT_BAD_SIZE);
+	}
+
+	/* The size of the memory must be exact multiply of size of one member */
+	if (size % buf->arr.size) {
+		DE("The size of the memory must be exact multiply of size of one member\n");
+		return (-BUFT_BAD_SIZE);
+	}
+
+	buf_s32_t num_of_members = size / buf->arr.size;
+	/* In case of array we should pass number of members, not size of the memory */
+	return buf_arr_add_members(buf, new_data, num_of_members);
+}
+
 /* Add one memner */
 ret_t buf_arr_add(buf_t *buf, const void *new_data_ptr)
 {
@@ -382,5 +401,83 @@ ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, 
 
 	memcpy(dest, ptr, buf->arr.size);
 	return BUFT_OK;
+}
+
+ret_t buf_arr_set_members(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const buf_s32_t members_num)
+{
+	TESTP(buf, -BUFT_NULL_POINTER);
+	int rc = buf_is_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
+
+	buf->arr.members = members_num;
+	return (BUFT_OK);
+}
+
+ret_t buf_arr_set_member_size(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const buf_s32_t member_size)
+{
+	TESTP(buf, -BUFT_NULL_POINTER);
+	int rc = buf_is_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
+
+	buf->arr.size = member_size;
+	return (BUFT_OK);
+}
+
+ret_t buf_arr_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+/*@releases buf->data@*/
+{
+	int rc;
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+
+	/* If buffer is invalid, it can signal memory corruption */
+	if (BUFT_OK != buf_array_is_valid(buf)) {
+		DE("Warning: buffer is invalid\n");
+		TRY_ABORT();
+	}
+
+	rc = buf_is_change_allowed(buf);
+
+	if (BUFT_OK != rc) {
+		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+		TRY_ABORT();
+		return rc;
+	}
+
+	if (buf->data) {
+		/* Security: zero memory before it freed */
+		memset(buf->data, 0, buf_room(buf));
+		free(buf->data);
+	}
+
+	if (BUFT_OK != buf_set_room(buf, 0)) {
+		DE("Can not set a new value to the buffer\n");
+		return (-BUFT_SET_ROOM_SIZE);
+	}
+
+	rc = buf_arr_set_member_size(buf, 0);
+	if (BUFT_OK != rc) {
+		DE("Can not set a new member size value to the buffer\n");
+		return (-BUFT_SET_USED_SIZE);
+	}
+
+	rc = buf_arr_set_members(buf, 0);
+	if (BUFT_OK != rc) {
+		DE("Can not set a new number of members value to the buffer\n");
+		return (-BUFT_SET_USED_SIZE);
+	}
+
+	buf->flags = 0;
+
+	return (BUFT_OK);
 }
 

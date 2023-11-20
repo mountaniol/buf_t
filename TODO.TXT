@@ -4,3 +4,5 @@
 3. Add bit array
 4. The CONSTANT buffer should be a type, not a flag
 5. Add types and flags tests
+6. CANARY shoeld have  adynamic size defined by user
+7. CANARY pattern should be defined by user; if not defined, an embedded canary to be used

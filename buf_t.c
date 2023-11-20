@@ -19,10 +19,11 @@
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
+#include "buf_t_errors.h"
 #include "se_tests.h"
 
 /* Abort on error */
-static buf_t_flags_t g_abort_on_err = 0;
+static buf_t_flags_t g_abort_on_err = ABORT_ON_ERROR_OFF;
 
 int bug_get_abort_flag(void)
 {
@@ -45,13 +46,13 @@ void buf_restore_flags(buf_t_flags_t flags)
 void buf_set_abort_flag(void)
 {
 	DDD("buf_t: enabled 'abort on error' state\n");
-	g_abort_on_err = 1;
+	g_abort_on_err = ABORT_ON_ERROR_ON;
 }
 
 void buf_unset_abort_flag(void)
 {
 	DDD("buf_t: disabled 'abort on error' state\n");
-	g_abort_on_err = 0;
+	g_abort_on_err = ABORT_ON_ERROR_OFF;
 }
 
 /***** Flags section */
@@ -143,23 +144,23 @@ ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf)
  * @return ret_t 
  * @details 
  */
-ret_t buf_change_allowed(buf_t *buf)
+ret_t buf_is_change_allowed(buf_t *buf)
 {
 	/* We can't add room to a constant buffer */
-	if (IS_BUF_IMMUTABLE(buf)) {
+	if (BUFT_YES == buf_is_immutable(buf)) {
 		DE("Warning: tried add room to Read-Only buffer\n");
 		TRY_ABORT();
 		return (-BUFT_IS_IMMUTABLE);
 	}
 
 	/* We can't add room to a locked buffer */
-	if (IS_BUF_LOCKED(buf)) {
-		DE("Warning: tried add room to Read-Only buffer\n");
+	if (BUFT_YES == buf_is_locked(buf)) {
+		DE("Warning: tried add room to a locked buffer\n");
 		TRY_ABORT();
 		return (-BUFT_IS_LOCKED);
 	}
 
-	return (BUFT_OK);
+	return (BUFT_YES);
 }
 
 /***** Set of functions to remove a flag from the buffer */
@@ -212,17 +213,6 @@ ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf)
 	return (buf_rm_flag(buf, BUF_T_FLAG_CRC));
 }
 
-/***** CANARY: Protect the buffer *****/
-
-ret_t buf_has_canary_flag(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
-{
-	if (IS_BUF_CANARY(buf)) {
-		return (BUFT_YES);
-	}
-
-	return (BUFT_NO);
-}
-
 /* Set canary word in the end of the buf
  * If buf has 'BUF_T_CANARY' flag set, it means
  * that extra space for canary pattern is reserved
@@ -234,7 +224,7 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	buf_t_canary_t canary;
 	buf_t_canary_t *canary_p;
 	TESTP_BUF_DATA(buf);
-	if (BUFT_NO == buf_has_canary_flag(buf)) {
+	if (BUFT_NO == buf_is_canary(buf)) {
 		DE("The buffer doesn't have CANARY flag\n");
 		TRY_ABORT();
 		/*@ignore@*/
@@ -260,7 +250,7 @@ buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer */
-	if (BUFT_OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_type_is_circ(buf)) {
 		DD("The buffer is CIRC\n");
 		if (buf->ht.head <= buf->ht.tail) {
 			return (buf->ht.head - buf->ht.tail);
@@ -269,7 +259,7 @@ buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* In case it is an array buffer */
-	if (BUFT_OK == buf_is_array(buf)) {
+	if (BUFT_OK == buf_type_is_array(buf)) {
 		return buf_arr_used(buf);
 	}
 
@@ -282,13 +272,13 @@ ret_t buf_set_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t used)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer */
-	if (BUFT_OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_type_is_circ(buf)) {
 		DE("Can not set ->used for CIRC fuffer - use 'buf_set_head_tail()' instead\n");
 		abort();
 	}
 
 	/* In case it is an array buffer */
-	if (BUFT_OK == buf_is_array(buf)) {
+	if (BUFT_OK == buf_type_is_array(buf)) {
 		return buf_array_set_used(buf, used);
 	}
 
@@ -301,14 +291,14 @@ ret_t buf_inc_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer, */
-	if (BUFT_OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_type_is_circ(buf)) {
 		DE("Can not add to ->used for CIRC fuffer - use 'buf_add_head_tail()' instead\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_BUFT_TYPE);
 	}
 
 	/* In case of array buffer it is not applicable */
-	if (BUFT_OK == buf_is_array(buf)) {
+	if (BUFT_OK == buf_type_is_array(buf)) {
 		DE("Can not add to ->used for ARRAY fuffer - use 'buf_add_head_tail()' instead\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_BUFT_TYPE);
@@ -324,14 +314,14 @@ ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* In case it is a circ buffer, */
-	if (BUFT_OK == buf_is_circ(buf)) {
+	if (BUFT_OK == buf_type_is_circ(buf)) {
 		DE("Can not add to ->used for CIRC fuffer - use 'buf_add_head_tail()' instead\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_BUFT_TYPE);
 	}
 
 	/* In case of array buffer it is not applicable */
-	if (BUFT_OK == buf_is_array(buf)) {
+	if (BUFT_OK == buf_type_is_array(buf)) {
 		DE("Can not add to ->used for ARRAY fuffer - use 'buf_add_head_tail()' instead\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_BUFT_TYPE);
@@ -348,6 +338,53 @@ ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 	}
 	return BUFT_OK;
 }
+
+/***** Test buffer flags *****/
+
+static ret_t buf_has_flag(buf_t *buf, int flag)
+{
+	if (buf->flags & flag) {
+		return BUFT_YES;
+	}
+
+	return BUFT_NO;
+}
+
+ret_t buf_is_immutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_IMMUTABLE);
+}
+
+ret_t buf_is_compressed(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_COMPRESSED);
+}
+
+ret_t buf_is_encrypted(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_ENCRYPTED);
+}
+
+ret_t buf_is_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_CANARY);
+}
+
+ret_t buf_is_crc(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_CRC);
+}
+
+ret_t buf_is_fixed(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_FIXED_SIZE);
+}
+
+ret_t buf_is_locked(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	return buf_has_flag(buf, BUF_T_FLAG_LOCKED);
+}
+
 
 /* This function will add canary bits after an existing buffer
  * and add the CANARY flag. The buffer room will be decreased by size of canary.
@@ -366,9 +403,12 @@ ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 		buf_used(buf) == buf_room(buf)) {
 
 		/* Add room to keep CANARY tail */
-		buf_add_room(buf, BUF_T_CANARY_SIZE);
+		int rc = buf_add_room(buf, BUF_T_CANARY_SIZE);
+		if (BUFT_OK != rc) {
+			DE("Could not add room\n");
+			return (rc);
+		}
 	}
-
 
 	/* If there no space to set CANARY tail, we abort the function */
 	if (buf_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
@@ -400,7 +440,7 @@ ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	TESTP_BUF_DATA(buf);
 
 	/* If this buf doesn't have CANARY flag, we stop the test */
-	if (!IS_BUF_CANARY(buf)) {
+	if (BUFT_NO == buf_is_canary(buf)) {
 		return (-BUFT_NO_CANARY);
 	}
 
@@ -420,7 +460,7 @@ buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
 	buf_t_canary_t *canary_p;
 	T_RET_ABORT(buf, -1);
-	if (!IS_BUF_CANARY(buf)) {
+	if (BUFT_NO == buf_is_canary(buf)) {
 		DE("The buffer doesn't have canary flag\n");
 		return (-1);
 	}
@@ -436,12 +476,12 @@ void buf_print_flags(/*@temp@*//*@in@*/buf_t *buf)
 	if (IS_BUF_TYPE_BIT(buf)) DDD("Buffer is BIT\n");
 	if (IS_BUF_TYPE_CIRC(buf)) DDD("Buffer is CIRC\n");
 	if (IS_BUF_TYPE_ARR(buf)) DDD("Buffer is ARRAY\n");
-	if (IS_BUF_IMMUTABLE(buf)) DDD("Buffer is READONLY\n");
-	if (IS_BUF_COMPRESSED(buf)) DDD("Buffer is COMPRESSED\n");
-	if (IS_BUF_ENCRYPTED(buf)) DDD("Buffer is ENCRYPTED\n");
-	if (IS_BUF_CANARY(buf)) DDD("Buffer is CANARY\n");
-	if (IS_BUF_CRC(buf)) DDD("Buffer is CRC\n");
-	if (IS_BUF_LOCKED(buf)) DDD("Buffer is locked\n");
+	if (BUFT_YES == buf_is_immutable(buf)) DDD("Buffer is READONLY\n");
+	if (BUFT_YES == buf_is_compressed(buf)) DDD("Buffer is COMPRESSED\n");
+	if (BUFT_YES == buf_is_encrypted(buf)) DDD("Buffer is ENCRYPTED\n");
+	if (BUFT_YES == buf_is_canary(buf)) DDD("Buffer is CANARY\n");
+	if (BUFT_YES == buf_is_crc(buf)) DDD("Buffer is CRC\n");
+	if (BUFT_YES == buf_is_locked(buf)) DDD("Buffer is locked\n");
 }
 
 /* Validate sanity of buf_t - common for all buffers */
@@ -474,7 +514,9 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	/* If the buffer have canary, test it; if the canary is bad, stop */
-	if (buf_room(buf) > 0 && IS_BUF_CANARY(buf) && (BUFT_OK != buf_test_canary(buf))) {
+	if (buf_room(buf) > 0 && 
+		(BUFT_YES == buf_is_canary(buf)) &&
+		(BUFT_OK != buf_test_canary(buf))) {
 		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_room(buf);
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
@@ -484,7 +526,8 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	/* TODO: Is it really a wrong situation? We can lovk and unlock the buffer */
 	/* In Read-Only buffer buf->room must be == bub->used */
-	if (IS_BUF_IMMUTABLE(buf) && (buf_room(buf) != buf_used(buf))) {
+	if ((BUFT_YES == buf_is_immutable(buf)) &&
+		(buf_room(buf) != buf_used(buf))) {
 		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_used(buf), buf_room(buf));
 		TRY_ABORT();
 		return (-BUFT_IMMUTABLE_DAMAGED);
@@ -527,7 +570,16 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 
 /***** TEST BUFFER TYPE ******/
 
-int buf_is_string(/*@temp@*//*@in@*/buf_t *buf)
+int buf_type_is_raw(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	if (IS_BUF_TYPE_RAW(buf)) {
+		return (BUFT_YES);
+	}
+	return (BUFT_NO);
+}
+
+int buf_type_is_string(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_STRING(buf)) {
@@ -536,7 +588,7 @@ int buf_is_string(/*@temp@*//*@in@*/buf_t *buf)
 	return (BUFT_NO);
 }
 
-int buf_is_array(/*@temp@*//*@in@*/buf_t *buf)
+int buf_type_is_array(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_ARR(buf)) {
@@ -545,7 +597,7 @@ int buf_is_array(/*@temp@*//*@in@*/buf_t *buf)
 	return (BUFT_NO);
 }
 
-int buf_is_bit(/*@temp@*//*@in@*/buf_t *buf)
+int buf_type_is_bit(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_BIT(buf)) {
@@ -554,7 +606,7 @@ int buf_is_bit(/*@temp@*//*@in@*/buf_t *buf)
 	return (BUFT_NO);
 }
 
-int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
+int buf_type_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	if (IS_BUF_TYPE_CIRC(buf)) {
@@ -584,7 +636,7 @@ int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 	if (size > 0) {
 
 		/* If CANARY is set in global flags add space for CANARY word */
-		if (IS_BUF_CANARY(buf)) {
+		if (BUFT_YES == buf_is_canary(buf)) {
 			real_size += BUF_T_CANARY_SIZE;
 		}
 
@@ -608,7 +660,9 @@ int buf_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* Set CANARY word */
-	if (size > 0 && IS_BUF_CANARY(buf) && BUFT_OK != buf_set_canary(buf)) {
+	if (size > 0 && 
+		(BUFT_YES == buf_is_canary(buf)) &&
+		BUFT_OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY word\n");
 		if (BUFT_OK != buf_free(buf)) {
 			DE("Can't free the buffer\n");
@@ -636,7 +690,7 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	T_RET_ABORT(data, -BUFT_NULL_POINTER);
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -644,7 +698,7 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 		return rc;
 	}
 
-	if (IS_BUF_CANARY(buf)) {
+	if (BUFT_YES == buf_is_canary(buf)) {
 		DE("The buffer has CANARY flag; it must be unset before replacinf data\n");
 		return (-BUFT_HAS_CANARY);
 	}
@@ -666,7 +720,7 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 }
 
 /* Set data into read-only buffer: no changes allowed after that */
-ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size)
+ret_t buf_set_data_immutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*//*@only@*//*@in@*/char *data, buf_s64_t size)
 /*@sets buf->data@*/
 {
 	int rc;
@@ -684,9 +738,10 @@ ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*
 		return (rc);
 	}
 
-	if (BUFT_OK != buf_mark_immutable(buf)) {
+	rc = buf_mark_immutable(buf);
+	if (BUFT_OK != rc) {
 		DE("Can not set RO flag\n");
-		return (-BUFT_BAD);
+		return (rc);
 	}
 	return (BUFT_OK);
 }
@@ -700,12 +755,12 @@ ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*
 	data = buf->data;
 	buf->data = NULL;
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
 		TRY_ABORT();
-		return NULL;
+		return (NULL);
 	}
 
 	if (BUFT_OK != buf_set_room(buf, 0)) {
@@ -732,12 +787,17 @@ ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*
 	/* This function is force to extract data and destroy the buf_t struct.
 	   I the buffer is unmutable, we remove this flag */
 
-	if (IS_BUF_IMMUTABLE(buf)) {
-		buf_unmark_immutable(buf);
+	if (BUFT_YES == buf_is_immutable(buf)) {
+		int rc = buf_unmark_immutable(buf);
+		if (BUFT_OK != rc) {
+			DE("Could not unset IMMUTABLE flag\n");
+			TRY_ABORT();
+			return (NULL);
+		}
 	}
 
 	/* If the buffer is locked, we stop the operation, it must be unlocked first */
-	if (IS_BUF_LOCKED(buf)) {
+	if (BUFT_YES == buf_is_locked(buf)) {
 		DE("Can not steal data from a locked buffer; unlock it first\n");
 		TRY_ABORT();
 		return (NULL);
@@ -754,7 +814,7 @@ ret_t buf_set_data_imutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*
 }
 
 /* TODO: add an 'err' aviable, this function can return NULL if there no data, but also returns NULL on an error */
-void /*@temp@*//*@null@*/ *buf_get_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+void /*@temp@*//*@null@*/ *buf_get_data_ptr(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 /*@uses buf->data@*/
 {
 	/* If buf is invalid we return '-1' costed into uint */
@@ -789,7 +849,7 @@ static ret_t buf_realloc(/*@temp@*//*@in@*//*@special@*/buf_t *buf, size_t new_s
 	void   *tmp;
 #ifdef S_SPLINT_S
 	tmp = zmalloc(buf_room(buf) + new_size);
-	memcpy(tmp, buf_get_data(buf), buf_room(buf));
+	memcpy(tmp, buf_get_data_ptr(buf), buf_room(buf));
 #else
 	tmp = realloc(buf->data, new_size);
 #endif
@@ -816,7 +876,7 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 /*@allocates buf->data@*/
 /*@uses buf->data@*/
 {
-	int rc;
+	int    rc;
 	size_t canary = 0;
 
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
@@ -827,7 +887,7 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 		return (-BUFT_BAD_SIZE);
 	}
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -835,13 +895,13 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 		return rc;
 	}
 
-	if (IS_BUF_CANARY(buf)) {
+	if (BUFT_YES == buf_is_canary(buf)) {
 		canary = BUF_T_CANARY_SIZE;
 	}
 
 	if (BUFT_OK != buf_realloc(buf, buf_room(buf) + size + canary)) {
 		DE("Can not reallocate buf->data\n");
-		return (-ENOMEM);
+		return (-BUFT_ALLOCATE);
 	}
 
 	/* Clean newely allocated memory */
@@ -852,16 +912,16 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 
 	if (BUFT_OK != buf_inc_room(buf, size)) {
 		DE("Can not increment 'room' value\n");
-		return (-BUFT_BAD);
+		return (-BUFT_INCREMENT);
 	}
 
 	/* If the buffer use canary add it to the end */
 
-	if (IS_BUF_CANARY(buf) && BUFT_OK != buf_set_canary(buf)) {
+	if (BUFT_YES == buf_is_canary(buf) && BUFT_OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY\b");
 		TRY_ABORT();
 		/*@ignore@*/
-		return (-ENOKEY);
+		return (-BUFT_CANNOT_SET_CANARY);
 		/*@end@*/
 	}
 
@@ -892,11 +952,13 @@ ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	int rc;
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
+	/* If buffer is invalid, it can signal memory corruption */
 	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
+		TRY_ABORT();
 	}
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -909,14 +971,15 @@ ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		memset(buf->data, 0, buf_room(buf));
 		free(buf->data);
 	}
+
 	if (BUFT_OK != buf_set_room(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
-		return (-BUFT_BAD);
+		return (-BUFT_SET_ROOM_SIZE);
 	}
 
 	if (BUFT_OK != buf_set_used(buf, 0)) {
 		DE("Can not set a new 'used' value to the buffer\n");
-		return (-BUFT_BAD);
+		return (-BUFT_SET_USED_SIZE);
 	}
 
 	buf->flags = 0;
@@ -934,13 +997,13 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	/* We asked to free a constant buffer; to do it, we must to remove the CONSTANT flag */
-	if (0 != IS_BUF_IMMUTABLE(buf)) {
+	if (BUFT_YES == buf_is_immutable(buf)) {
 		buf_unmark_immutable(buf);
 	}
 
 	/* If we asked to clean a locked buffer, we return an error.
 	   The user must unlock it before it can be freed */
-	if (0 != IS_BUF_LOCKED(buf)) {
+	if (BUFT_YES == buf_is_locked(buf)) {
 		DE("Asked to free a locked buffer\n");
 		return (-BUFT_IS_LOCKED);
 	}
@@ -966,7 +1029,7 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 /*@defines buf->data@*/
 /*@uses buf->data@*/
 {
-	int rc;
+	int    rc;
 	size_t new_size;
 	TESTP_ASSERT(buf, "buf is NULL");
 	TESTP_ASSERT(new_data, "buf is NULL");
@@ -975,10 +1038,10 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 		DE("Wrong argument(s): b = %p, buf = %p, size = %lu\n", (void *)buf, (void *)new_data, size);
 		/*@end@*/
 		TRY_ABORT();
-		return (-EINVAL);
+		return (-BUFT_BAD_SIZE);
 	}
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -990,6 +1053,8 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	switch (BUF_TYPE(buf)) {
 	case BUF_T_TYPE_STRING:
 		return buf_str_add(buf, new_data, size);
+	case BUF_T_TYPE_ARR:
+		return buf_arr_add_memory(buf, new_data, size);
 	}
 
 	new_size = size;
@@ -1025,7 +1090,7 @@ ret_t buf_set_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t room)
 	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -1042,7 +1107,7 @@ ret_t buf_inc_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -1064,7 +1129,7 @@ ret_t buf_dec_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 		return -BUFT_BAD;
 	}
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -1084,7 +1149,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	TESTP_BUF_DATA(buf);
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -1118,7 +1183,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	/* Here we shrink the buffer */
 	new_size = buf_used(buf);
-	if (0 != IS_BUF_CANARY(buf)) {
+	if (BUFT_YES == buf_is_canary(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
 	}
 
@@ -1132,7 +1197,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return (-BUFT_BAD);
 	}
 
-	if (0 != IS_BUF_CANARY(buf)) {
+	if (BUFT_YES == buf_is_canary(buf)) {
 		if (BUFT_OK != buf_set_canary(buf)) {
 			DE("Can not set CANARY to the buffer\n");
 			TRY_ABORT();
@@ -1210,7 +1275,7 @@ size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, con
 
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
@@ -1285,7 +1350,7 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 	TESTP_BUF_DATA(buf);
 	TESTP_BUF_DATA(file);
 
-	rc = buf_change_allowed(buf);
+	rc = buf_is_change_allowed(buf);
 
 	if (BUFT_OK != rc) {
 		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
