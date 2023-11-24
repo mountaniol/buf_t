@@ -28,20 +28,21 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	/* If the buf is string the room must be greater than used */
 	/* If there is a data, then:
 	   the room must be greater than used, because we do not count terminating \0 */
-	//if ((NULL != buf->data) && (buf_room(buf) <= buf_used(buf))) {
-	if ((BUFT_NO == buf_data_is_null(buf)) && (buf_room(buf) <= buf_used(buf))) {
-		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_used(buf), buf_room(buf));
+	if ((BUFT_NO == buf_data_is_null(buf)) && 
+		(buf_get_room_count(buf) <= buf_get_used(buf))) {
+		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_get_used(buf), buf_get_room_count(buf));
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
 
 	/* For string buffers only: check that the string is null terminated */
 	/* If the 'used' area not '\0' terminated - invalid */
-	if ((BUFT_NO == buf_data_is_null(buf)) && ('\0' != *((char *)buf_get_data_ptr(buf) + buf_used(buf)))) {
+	if ((BUFT_NO == buf_data_is_null(buf)) && 
+		('\0' != *((char *)buf_get_data_ptr(buf) + buf_get_used(buf)))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
-		//DE("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_used(buf), buf_room(buf), *(buf->data + buf_used(buf)), buf->data);
+		D0("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_get_used(buf), buf_get_room_count(buf), *(buf->data + buf_get_used(buf)), buf->data);
 		DE("used = %ld, room = %ld, last character = |%c|, string = %s\n",
-		   buf_used(buf), buf_room(buf), *((char *)buf_get_data_ptr(buf) + buf_used(buf)), (char *)buf_get_data_ptr(buf));
+		   buf_get_used(buf), buf_get_room_count(buf), *((char *)buf_get_data_ptr(buf) + buf_get_used(buf)), (char *)buf_get_data_ptr(buf));
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -122,7 +123,7 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 	new_size = size;
 	/* If this buffer is a string buffer, we should consider \0 after string. If this buffer is empty,
 	   we add +1 for the \0 terminator. If the buffer is not empty, we reuse existing \0 terminator */
-	if (buf_used(buf) == 0) {
+	if (buf_get_used(buf) == 0) {
 		new_size += sizeof(char);
 	}
 
@@ -136,7 +137,7 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 	/* All done, now add new data into the buffer */
 	/*@ignore@*/
 	char * memory_to_copy = buf_get_data_ptr(buf);
-	memory_to_copy += buf_used(buf);
+	memory_to_copy += buf_get_used(buf);
 	memcpy(memory_to_copy, new_data, size);
 	/*@end@*/
 	if (BUFT_OK != buf_inc_used(buf, size)) {
@@ -154,13 +155,13 @@ ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* If the buf is empty - return with error */
-	if (0 == buf_room(buf)) {
+	if (0 == buf_get_room_count(buf)) {
 		DE("Tryed to detect used in an empty buffer\n");
 		return (-ECANCELED);
 	}
 
 	/* We start with the current 'used' size */
-	calculated_used_size = buf_used(buf);
+	calculated_used_size = buf_get_used(buf);
 
 	/* Search for the first NOT 0 character - this is the end of 'used' area */
 	/* TODO: Replace this with a binary search:
@@ -178,12 +179,12 @@ ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 	calculated_used_size++;
 
 	/* If the calculated used_size is te same as set in the buffer - nothing to do */
-	if (calculated_used_size == buf_used(buf)) {
-		DDD0("No need new string size: %ld -> %ld\n", buf_used(buf), calculated_used_size);
+	if (calculated_used_size == buf_get_used(buf)) {
+		DDD0("No need new string size: %ld -> %ld\n", buf_get_used(buf), calculated_used_size);
 		return BUFT_OK;
 	}
 
-	DDD0("Setting new string size: %ld -> %ld\n", buf_used(buf), calculated_used_size);
+	DDD0("Setting new string size: %ld -> %ld\n", buf_get_used(buf), calculated_used_size);
 	/* No, the new size if less than the current */
 	if (BUFT_OK != buf_set_used(buf, calculated_used_size)) {
 		DE("Can not set a new 'used' value to the buffer\n");
@@ -200,7 +201,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	/* If the buf is empty - return with error */
-	if (0 == buf_room(buf)) {
+	if (0 == buf_get_room_count(buf)) {
 		DE("Tryed to pack an empty buffer\n");
 		return (-ECANCELED);
 	}
@@ -210,7 +211,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 		return (ret);
 	}
 
-	new_size = buf_used(buf);
+	new_size = buf_get_used(buf);
 	/*@access buf_t@*/
 	if (BUFT_YES == buf_is_canary(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
@@ -223,7 +224,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 
 	new_size++;
 
-	DDD0("Going to resize the buf room %lu -> %lu\n", buf_room(buf), new_size);
+	DDD0("Going to resize the buf room %lu -> %lu\n", buf_get_room_count(buf), new_size);
 
 	/* TODO: Consider CRC + CANARY */
 
@@ -243,7 +244,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 	}
 	/*@end@*/
 
-	if (BUFT_OK != buf_set_room(buf, new_size)) {
+	if (BUFT_OK != buf_set_room_count(buf, new_size)) {
 		DE("Can not set a new room value to the buffer\n");
 		return (-BUFT_BAD);
 	}
@@ -283,7 +284,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 		return (NULL);
 	}
 	va_start(args, format);
-	rc = vsnprintf(buf_get_data_ptr(buf), buf_room(buf), format, args);
+	rc = vsnprintf(buf_get_data_ptr(buf), buf_get_room_count(buf), format, args);
 	va_end(args);
 
 	if (rc < 0) {
@@ -294,7 +295,7 @@ ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 		return (NULL);
 	}
 
-	if (BUFT_OK != buf_set_used(buf, buf_room(buf) - 1)) {
+	if (BUFT_OK != buf_set_used(buf, buf_get_room_count(buf) - 1)) {
 		DE("Can not set a new 'used' value to the buffer\n");
 		if (BUFT_OK != buf_free(buf)) {
 			DE("Warning, can't free buf_t, possible memory leak\n");
@@ -333,20 +334,20 @@ ret_t buf_str_concat(/*@in@*//*@temp@*//*notnull*/buf_t *dst, /*@in@*//*@temp@*/
 		return -BUFT_BAD;
 	}
 
-	if (BUFT_OK != buf_add_room(dst, buf_used(src))) {
+	if (BUFT_OK != buf_add_room(dst, buf_get_used(src))) {
 		DE("Can not add room for string copy");
 	}
 
 	_dst_buf_data = (char *)buf_get_data_ptr(dst);
 	_src_buf_data = (char *)buf_get_data_ptr(src);
-	memcpy(_dst_buf_data + buf_used(dst), _src_buf_data, buf_used(src));
-	if (BUFT_OK != buf_inc_used(dst, buf_used(src))) {
+	memcpy(_dst_buf_data + buf_get_used(dst), _src_buf_data, buf_get_used(src));
+	if (BUFT_OK != buf_inc_used(dst, buf_get_used(src))) {
 		DE("Can not increase 'used'\n");
 		TRY_ABORT();
 		return -BUFT_BAD;
 	}
 	//dst->used += buf_used(src);
-	_dst_buf_data[buf_used(dst)] = '\0';
+	_dst_buf_data[buf_get_used(dst)] = '\0';
 	return BUFT_OK;
 }
 

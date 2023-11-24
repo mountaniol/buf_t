@@ -4,84 +4,141 @@
 #include <stdio.h>
 #include <time.h>
 /*@=skipposixheaders@*/
+#define D_EMPTY_PRINT(x,...) do{}while(0)
 
+/* Print a message */
+#define _D_PRINT(fmt, ...) do{printf("%s +%d : " fmt , __func__, __LINE__, ##__VA_ARGS__); }while(0 == 1)
+
+/* Print an error */
+#define _D_PRINT_ERR(fmt, ...) do{fprintf(stderr, "%s +%d [ERR] : " fmt, __func__, __LINE__, ##__VA_ARGS__); }while(0 == 1)
+
+/* Print one liner message with return */
+#define _D_PRINT_LINE(fmt, ...) do{printf("%s +%d : " fmt "\n" , __func__, __LINE__, ##__VA_ARGS__); }while(0 == 1)
+
+/* Print an one-line error with line return  */
+#define _D_PRINT_ERR_LINE(fmt, ...) do{fprintf(stderr, "%s +%d [ERR] : " fmt "\n", __func__, __LINE__, ##__VA_ARGS__); }while(0 == 1)
+
+#define D D_EMPTY_PRINT
+#define DD D_EMPTY_PRINT
+#define DDD D_EMPTY_PRINT
+
+#define DL D_EMPTY_PRINT
+#define DDL D_EMPTY_PRINT
+#define DDDL D_EMPTY_PRINT
+
+#define DE D_EMPTY_PRINT
+#define DDE D_EMPTY_PRINT
+#define DDDE D_EMPTY_PRINT
+
+#define EL D_EMPTY_PRINT
+#define EEL D_EMPTY_PRINT
+#define EEEL D_EMPTY_PRINT
+
+/* Empty printings */
+
+#define DE0 D_EMPTY_PRINT
+#define DDE0 D_EMPTY_PRINT
+#define DDDE0 D_EMPTY_PRINT
+
+#define E0 D_EMPTY_PRINT
+#define EE0 D_EMPTY_PRINT
+#define EEE0 D_EMPTY_PRINT
+
+#define EL0 D_EMPTY_PRINT
+#define EEL0 D_EMPTY_PRINT
+#define EEEL0 D_EMPTY_PRINT
+
+#define D0 D_EMPTY_PRINT
+#define DD0 D_EMPTY_PRINT
+#define DDD0 D_EMPTY_PRINT
+
+/* Enable DEBUG3 & DEBUG2  */
 #ifdef DEBUG3
-#undef DEBUG2
-#define DEBUG2
-#endif
+	#undef DERROR3
+	#define DERROR3
 
-#ifdef DEBUG2
-#undef DEBUG
-#define DEBUG
-#endif
+	#undef DEBUG2
+	#define DEBUG2
 
-#ifdef DDD
 	#undef DDD
-#endif
-#ifdef DD
-	#undef DD
-#endif
-#ifdef D
-	#undef D
-#endif
-#ifdef DE
-	#undef DE
-#endif
-#ifdef DDE
-	#undef DDE
-#endif
-#ifdef DDD0
-	#undef DDD0
-#endif
-
-#define _D_PRINT(fmt, ...) do{printf("%s +%d : ", __func__, __LINE__); printf(fmt, ##__VA_ARGS__); }while(0 == 1)
-#define _D_PRINT_ERR(fmt, ...) do{fprintf(stderr, "%s +%d [ERR] : ", __func__, __LINE__); printf(fmt, ##__VA_ARGS__); }while(0 == 1)
-
-/* D and DE print */
-#ifdef DEBUG
-	#define DE _D_PRINT_ERR
-	#define D _D_PRINT
-#else
-	#define DE(x,...) do{}while(0)
-	#define D(x,...) do{}while(0)
-#endif
-
-/* DD and DDE print */
-#ifdef DEBUG2
-	#define DDE _D_PRINT_ERR
-	#define DD _D_PRINT
-#else
-	#define DDE(x,...) do{}while(0)
-	#define DD(x,...) do{}while(0)
-#endif
-
-/* DD and DDE print */
-#ifdef DEBUG3
-	#define DDDE _D_PRINT_ERR
 	#define DDD _D_PRINT
-#else
-	#define DDDE(x,...) do{}while(0)
-	#define DDD(x,...) do{}while(0)
+
+	#undef DDDL
+	#define DDDL _D_PRINT_LINE
 #endif
 
-/* Now, if we want to enable only error prints */
-#ifdef DERROR
-	#define DE _D_PRINT_ERR
+/* Enable DEBUG2 & DEBUG  */
+#ifdef DEBUG2
+	#undef DERROR2
+	#define DERROR2
+
+	#undef DEBUG
+	#define DEBUG
+
+	#undef DD
+	#define DD _D_PRINT
+
+	#undef DDL
+	#define DDL _D_PRINT_LINE
 #endif
-#ifdef DERROR2
-	#define DDE _D_PRINT_ERR
+
+/* Enable DEBUG  */
+#ifdef DEBUG
+	#undef DERROR
+	#define DERROR
+
+	#undef D
+	#define D _D_PRINT
+
+	#undef DL
+	#define DL _D_PRINT_LINE
 #endif
+
+/* Enable DERROR3 & DERROR2 */
 #ifdef DERROR3
+	#undef DERROR2
+	#define DERROR2
+
+	#undef DDDE
 	#define DDDE _D_PRINT_ERR
+
+	#undef EEE
+	#define EEE _D_PRINT_ERR
+
+	#undef EEEL
+	#define EEEL _D_PRINT_ERR_LINE
 #endif
 
-/* D0 and DE0 are always empty : use it to keep printings for just in case you need it some day */
-#define D0(x,...) do{}while(0)
-#define DD0(x,...) do{}while(0)
-#define DDD0(x,...) do{}while(0)
-#define DE0(x,...) do{}while(0)
+/* Enable DERROR2 & DERROR */
+#ifdef DERROR2
+	#undef DERROR
+	#define DERROR
 
-#define ENTRY() DD("Entry to the function %s\n", __func__)
+	#undef DDE
+	#define DDE _D_PRINT_ERR
+
+	#undef EE
+	#define EE _D_PRINT_ERR
+
+	#undef EEL
+	#define EEL _D_PRINT_ERR_LINE
+#endif
+
+/* Enable DERROR */
+#ifdef DERROR
+	#undef DE
+
+	#undef DE
+	#define DE _D_PRINT_ERR
+
+	#undef E
+	#define E _D_PRINT_ERR
+
+	#undef EL
+	#define EL _D_PRINT_ERR_LINE
+#endif
+
+#define ENTRY() do{DDL("Entry to the function %s", __func__);} while(0)
 
 /* This used to test and print time of execution in the same function; if you copy thism don't forget include <time.h> */
 #define D_TIME_START(x) clock_t x##_start = clock();

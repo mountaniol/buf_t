@@ -49,31 +49,46 @@ int test_buf_strpack(char *data, size_t size)
 		goto err2;
 	}
 
-	buf_str_concat(buf, buf2);
+	if (BUFT_OK != buf_str_concat(buf, buf2)) {
+		goto err2;
+	}
 
 	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err2;
 	}
 
-	buf_str_pack(buf);
+	if (BUFT_OK != buf_str_pack(buf)) {
+		goto err2;
+	}
+
 	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err2;
 	}
 
-	buf_str_pack(buf2);
+	if (BUFT_OK != buf_str_pack(buf2)) {
+		goto err2;
+	}
+
 	if (BUFT_OK != buf_free(buf2)) {
 		goto err2;
 	}
 
-	buf_free(buf2);
+	if (BUFT_OK != buf_free(buf)) {
+		return 1;
+	}
 
 	return 0;
 
 err2:
-	buf_free(buf2);
+	if (BUFT_OK != buf_free(buf2)) {
+		return 1;
+	}
 
 err1:
-	buf_free(buf);
+	if (BUFT_OK != buf_free(buf)) {
+		return 1;
+	}
+
 	return 1;
 }
 
@@ -89,11 +104,15 @@ int   test_buf_sprintf(char *data, size_t size)
 		goto err1;
 	}
 
-	buf_free(buf);
+	if (BUFT_OK != buf_free(buf)) {
+		return 1;
+	}
 	return 0;
 
 err1:
-	buf_free(buf);
+	if (BUFT_OK != buf_free(buf)) {
+		return 1;
+	}
 	return 1;
 }
 
@@ -134,7 +153,9 @@ int   test_buf_string(char *data, size_t size)
 		goto err2;
 	}
 
-	buf_str_concat(buf, buf2);
+	if (BUFT_OK != buf_str_concat(buf, buf2)) {
+		goto err2;
+	}
 
 	if (BUFT_OK != buf_is_valid(buf)) {
 		goto err2;
@@ -144,20 +165,25 @@ int   test_buf_string(char *data, size_t size)
 		goto err1;
 	}
 
-	buf_free(buf2);
+	if (BUFT_OK != buf_free(buf2)) {
+		return 1;
+	}
 
 	return 0;
 
+	/*@ignore@*/
 err2:
 	buf_free(buf2);
 
 err1:
 	buf_free(buf);
 	return 1;
+	/*@end@*/
 }
 
 int   test_buf_t(char *data, size_t size)
 {
+	int   rc;
 	buf_t *buf   = buf_new(size);
 	buf_t *buf2;
 
@@ -176,20 +202,44 @@ int   test_buf_t(char *data, size_t size)
 
 	switch (data[0] % 17) {
 	case 0:
-		buf_mark_canary(buf);
-		buf_set_canary(buf);
+		rc = buf_mark_canary(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
+		rc = buf_set_canary(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
 		break;
 	case 1:
-		buf_mark_compresed(buf);
+		rc = buf_mark_compresed(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
 		break;
 	case 2:
-		buf_mark_crc(buf);
+		rc = buf_mark_crc(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
 		break;
 	case 3:
-		buf_mark_encrypted(buf);
+		rc = buf_mark_encrypted(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
 		break;
 	case 4:
-		buf_mark_immutable(buf);
+		rc = buf_mark_immutable(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
+		break;
+	case 5:
+		rc = buf_mark_locked(buf);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
 		break;
 	}
 
@@ -216,26 +266,68 @@ int   test_buf_t(char *data, size_t size)
 		goto err1;
 	}
 
-	buf_free(buf2);
+	rc = buf_free(buf2);
+	if (BUFT_OK != rc) {
+		return 1;
+	}
 
 	return 0;
 
+	/*@ignore@*/
 err2:
 	buf_free(buf2);
 
 err1:
 	buf_free(buf);
+	/*@end@*/
 	return 1;
 }
 
+int   test_buf_t_realloc(char *data, size_t size)
+{
+	int   i;
+	int   rc;
+	uint16_t *sizes = (uint16_t *)data;
+	buf_t *buf = buf_new(size);
 
-int  main(int argc, char *argv[])
+	if (NULL == buf) {
+		return 1;
+	}
+
+	for (i = 0; i < 100; i++) {
+		rc = buf_clean(buf);
+
+		uint16_t *sizes = ((uint16_t *)data) + i;
+
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
+
+		rc = buf_add_room(buf, sizes[i]);
+		if (BUFT_OK != rc) {
+			goto err1;
+		}
+	}
+
+	rc = buf_free(buf);
+	if (BUFT_OK != rc) {
+		return 1;
+	}
+
+	return 0;
+
+err1:
+	buf_free(buf);
+	/*@end@*/
+	return 1;
+}
+
+int  main(__attribute__((unused))int argc, __attribute__((unused))char *argv[])
 {
 
 	int  rc;
-	int  st;
+	int  st               = 0;
 	char input[INPUTSIZE] = {0};
-	char *data;
 
 	rc = read(STDIN_FILENO, input, INPUTSIZE);
 
@@ -243,7 +335,7 @@ int  main(int argc, char *argv[])
 		fprintf(stderr, "Couldn't read stdin.\n");
 	}
 
-	switch (input[0] % 4) {
+	switch (input[0] % 5) {
 	case 0:
 		st = test_buf_t(input, rc);
 		break;
@@ -256,6 +348,11 @@ int  main(int argc, char *argv[])
 	case 3:
 		st = test_buf_strpack(input, rc);
 		break;
+	case 4:
+		st = test_buf_t_realloc(input, rc);
+		break;
+	default:
+		st = 1;
 	}
 	return st;
 

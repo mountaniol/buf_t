@@ -107,6 +107,15 @@ extern int bug_get_abort_flag(void);
 /* How much bytes will be transmitted to send buf_t + its actual data */
 #define BUF_T_NET_SEND_SIZE(b) (BUF_T_STRUCT_NET_SIZE + b->used)
 
+
+/* Found on Internet: detect max and min possible values for any data type.
+   https://copyprogramming.com/howto/min-and-max-value-of-data-type-in-c */
+#define MAX_OF(type) \
+    (((type)(~0LLU) > (type)((1LLU<<((sizeof(type)<<3)-1))-1LLU)) ? (long long unsigned int)(type)(~0LLU) : (long long unsigned int)(type)((1LLU<<((sizeof(type)<<3)-1))-1LLU))
+#define MIN_OF(type) \
+    (((type)(1LLU<<((sizeof(type)<<3)-1)) < (type)1) ? (long long int)((~0LLU)-((1LLU<<((sizeof(type)<<3)-1))-1LLU)) : 0LL)
+
+
 /**
  * @author Sebastian Mountaniol (11/20/23)
  * @brief This function returns abort flag. If abort flag is set
@@ -181,7 +190,7 @@ extern ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ 
  * @return void* Returns buf->data; NULL on an error
  * @details 
  */
-extern void /*@temp@*/ *buf_get_data_ptr(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+extern void /*@temp@*//*@null@*/ *buf_get_data_ptr(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
 
 /**
@@ -254,15 +263,16 @@ extern /*@null@*//*@only@*/void *buf_steal_data(/*@temp@*/ /*@in@*//*@special@*/
 extern /*@null@*/void *buf_to_data(/*@only@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
- * @brief Remove data from buffer (and free the data), set buf->room = buf->len = 0
- * @func err_t buf_clean(buf_t *buf)
+ * @brief Remove internal buffer, set all counters to 0,
+ *  	  clean all flags
  * @author se (16/05/2020)
- * @param buf Buffer to remove data from
- * @return err_t BUFT_OK if all right
- * 	EINVAL if buf is NULL pointer
- * 	EACCESS if the buffer is read-only, buffer kept untouched
- * @details If the buffer is invalid (see buf_is_valid()),
- * @details the opreration won't be interrupted and buffer will be cleaned.
+ * @param buf Buffer to clean
+ * @return err_t BUFT_OK if all right; a negative error code on
+ *  	   a problem
+ * @details (1) If the buffer is invalid (see buf_is_valid()),
+ * the opreration won't be interrupted and buffer will be
+ * cleaned. (2) It won't clean the locked buffer. (3) It WILL
+ * clean immutable buffer
  */
 extern ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
@@ -328,13 +338,12 @@ extern ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@
 
 /**
  * @author Sebastian Mountaniol (14/06/2020)
- * @func buf_usize_t buf_used(buf_t *buf)
  * @brief Return size in bytes of used memory (which is buf->used)
  * @param buf_t * buf Buffer to check
  * @return ssize_t Number of bytes used on success
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf);
+extern buf_s64_t buf_get_used(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -460,7 +469,7 @@ extern ret_t buf_is_locked(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
  * @return ssize_t How many bytes allocated for this 'buf'
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_s64_t buf_room(/*@temp@*/ /*@in@*/buf_t *buf);
+extern buf_s64_t buf_get_room_count(/*@temp@*/ /*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -473,7 +482,7 @@ extern buf_s64_t buf_room(/*@temp@*/ /*@in@*/buf_t *buf);
  * @return ret_t BUFT_OK on success, BAD on an error
  * @details 
  */
-extern ret_t buf_set_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t room);
+extern ret_t buf_set_room_count(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t room);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -486,7 +495,7 @@ extern ret_t buf_set_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t room);
  * @return ret_t BUFT_OK on sucess, BAD on an error
  * @details 
  */
-extern ret_t buf_inc_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t inc);
+extern ret_t buf_inc_room_count(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t inc);
 
 /**
  * @author Sebastian Mountaniol (12/16/21)
@@ -500,7 +509,7 @@ extern ret_t buf_inc_room(/*@temp@*/ /*@in@*/ buf_t *buf, buf_s64_t inc);
  * @details The 'dec' must be less or equal to the buf->room,
  *  		else BAD error returned and no value decremented
  */
-extern ret_t buf_dec_room(/*@temp@*/ /*@in@*/buf_t *buf, buf_s64_t dec);
+extern ret_t buf_dec_room_count(/*@temp@*/ /*@in@*/buf_t *buf, buf_s64_t dec);
 
 /**
  * @author Sebastian Mountaniol (01/06/2020)

@@ -18,8 +18,14 @@
 
 /*** Interface to buf_t internals ***/
 
+/* Internal function: get number of members in buf_t without any test */
+static buf_s32_t _buf_arr_members(buf_t *buf)
+{
+	return buf->arr.members;
+}
+
 /* Get number of members in buf_t */
-buf_s32_t buf_arr_members(buf_t *buf)
+buf_s32_t buf_arr_get_memberss_count(buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
@@ -30,11 +36,11 @@ buf_s32_t buf_arr_members(buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	return buf->arr.members;
+	return _buf_arr_members(buf);
 }
 
 /* Set number of members in buf_t */
-ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members)
+ret_t buf_set_arr_members_count(buf_t *buf, buf_s32_t new_members)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
@@ -55,8 +61,14 @@ ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members)
 	return BUFT_OK;
 }
 
+/* Get size of a single member without additional test, internal function */
+static buf_s32_t _buf_arr_member_size(buf_t *buf)
+{
+	return buf->arr.size;
+}
+
 /* Get size of a single member in buf_t */
-buf_s32_t buf_arr_member_size(buf_t *buf)
+buf_s32_t buf_arr_get_member_size(buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
@@ -67,7 +79,7 @@ buf_s32_t buf_arr_member_size(buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	return buf->arr.size;
+	return _buf_arr_member_size(buf);
 }
 
 /* Set a size of a single member in buf_t */
@@ -87,7 +99,7 @@ ret_t buf_set_arr_member_size(buf_t *buf, buf_s32_t new_size)
 }
 
 /* Calculate 'used' space int the buf */
-buf_s64_t buf_arr_used(buf_t *buf)
+buf_s64_t buf_arr_get_used(buf_t *buf)
 {
 	buf_s64_t ret_members     = 0;
 	buf_s64_t ret_member_size = 0;
@@ -102,14 +114,14 @@ buf_s64_t buf_arr_used(buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	ret_members = buf_arr_members(buf);
+	ret_members = buf_arr_get_memberss_count(buf);
 	if (ret_members < 0) {
 		DE("Could not take number of membrs in array\n");
 		TRY_ABORT();
 		return ret_members;
 	}
 
-	ret_member_size = buf_arr_member_size(buf);
+	ret_member_size = buf_arr_get_member_size(buf);
 	if (ret_member_size < 0) {
 		DE("Could not take size of one of member in array\n");
 		TRY_ABORT();
@@ -126,21 +138,23 @@ ret_t buf_arr_set_used(buf_t *buf, buf_s64_t new_used)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* We can execute this operation only when we know the size of a single member */
-	if (buf->arr.size < 1) {
+	if (_buf_arr_member_size(buf) < 1) {
 		DE("Can not set 'used' for buf ARRARY if a member size is not set\n");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
 
 	/* Test that the new size is aligned with the size of a single memner */
-	if (0 != (new_used % buf->arr.size)) {
+	if (0 != (new_used % _buf_arr_member_size(buf))) {
 		DE("The new 'used' for the buffer (%ld) is not aligned with member size (%d): modulo (%ld)\n",
-		   new_used, buf->arr.size, (new_used % buf->arr.size));
+		   new_used, 
+		   _buf_arr_member_size(buf), 
+		   (new_used % _buf_arr_member_size(buf)));
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
 
-	buf->arr.members = (new_used / buf->arr.size);
+	buf->arr.members = (new_used / _buf_arr_member_size(buf));
 	return BUFT_OK;
 }
 
@@ -160,22 +174,22 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	/* TEST: If buf->data is NULL, the 'room' and 'usage' can not be > 0 */
 	if (BUFT_YES == buf_data_is_null(buf)) {
 		/* Test buf->room is 0 */
-		if (buf_room(buf) > 0) {
+		if (buf_get_room_count(buf) > 0) {
 			DE("buf->data is NULL buf buf->room > 0\n");
 			TRY_ABORT();
 			return (-ECANCELED);
 		}
 
 		/* Test buf->used is 0 */
-		if (buf_used(buf) > 0) {
+		if (buf_get_used(buf) > 0) {
 			DE("buf->data is NULL buf buf->used > 0\n");
 			TRY_ABORT();
 			return (-ECANCELED);
 		}
 	}
 
-	/* TEST: If the buffer is ARR, and number of memners > 0, the size of a memner must be > 0 */
-	if (buf->arr.members > 0 && buf->arr.size == 0) {
+	/* TEST: If the buffer is ARR, and number of memners > 0, the size of a member must be > 0 */
+	if (_buf_arr_members(buf) > 0 && _buf_arr_member_size(buf) == 0) {
 		DE("buf->arr.members > 0 && buf->arr.size == 0\n");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -183,13 +197,13 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	/* TEST: ->data is not NULL, than neither arr.amount not arr.size could be < 0 */
 	if (BUFT_NO == buf_data_is_null(buf)) {
-		if (buf_arr_members(buf) < 0) {
+		if (buf_arr_get_memberss_count(buf) < 0) {
 			DE("Value of 'members' < 0");
 			TRY_ABORT();
 			return (-ECANCELED);
 		}
 
-		if (buf_arr_member_size(buf) < 0) {
+		if (buf_arr_get_member_size(buf) < 0) {
 			DE("Value of 'member size' < 0");
 			TRY_ABORT();
 			return (-ECANCELED);
@@ -209,14 +223,16 @@ ret_t buf_array_set_used(/*@in@*//*@temp@*/buf_t *buf, buf_s64_t used)
 		return BUFT_OK;
 	}
 
-	if (0 == (used % buf->arr.size)) {
-		buf->arr.members = used / buf->arr.size;
+	if (0 == (used % _buf_arr_member_size(buf))) {
+		buf->arr.members = used / _buf_arr_member_size(buf);
 		return BUFT_OK;
 	}
 
 	/* Else we have an error */
 	DE("Can not set 'used' of the array: it is not multiples of size of one memnber: asked to sed %ld, member size %d, modulo is %ld\n",
-	   used, buf->arr.size, (used % buf->arr.size));
+	   used, 
+	   _buf_arr_member_size(buf),
+	   (used % _buf_arr_member_size(buf)));
 	TRY_ABORT();
 	return (-BUFT_BAD);
 
@@ -255,26 +271,26 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 	}
 
 	/* Let's calulate a new room: Get the current room... */
-	buf_s64_t new_room = buf_arr_used(buf);
+	buf_s64_t new_room = buf_arr_get_used(buf);
 	if (new_room < 0) {
 		DE("Could not calculate used memory in a buffer\n");
 		return -ECANCELED;
 	}
 
 	/* ... and add space for new elements, every element has a known size */
-	new_room += buf->arr.size * num_of_new_members;
+	new_room += _buf_arr_member_size(buf) * num_of_new_members;
 
 	/* Add room if needed: buf_test_room() adds room if needed */
 	if (BUFT_OK != buf_test_room(buf, new_room)) {
 		DE("Can't add room to buf_t: old room is %ld, asked room is %ld\n",
-		   buf_arr_used(buf), new_room);
+		   buf_arr_get_used(buf), new_room);
 		TRY_ABORT();
 		return (-ENOMEM);
 	}
 
 	/* Copy new data into the buffer */
-	offset = buf->arr.members * buf->arr.size;
-	memcpy(buf->data + offset, new_data_ptr, buf->arr.size * num_of_new_members);
+	offset = _buf_arr_members(buf) * _buf_arr_member_size(buf);
+	memcpy(buf->data + offset, new_data_ptr, _buf_arr_member_size(buf) * num_of_new_members);
 
 	/* Increase number of elements in the array */
 	buf->arr.members += num_of_new_members;
@@ -284,18 +300,18 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 ret_t buf_arr_add_memory(buf_t *buf, /*@temp@*//*@in@*/const char *new_data, const buf_s64_t size)
 {
 	/* The size of memory can not be less than size of array member */
-	if (size > buf->arr.size) {
+	if (size > _buf_arr_member_size(buf)) {
 		DE("Wrong size: the size of memory less than size of a member\n");
 		return (-BUFT_BAD_SIZE);
 	}
 
 	/* The size of the memory must be exact multiply of size of one member */
-	if (size % buf->arr.size) {
+	if (size % _buf_arr_member_size(buf)) {
 		DE("The size of the memory must be exact multiply of size of one member\n");
 		return (-BUFT_BAD_SIZE);
 	}
 
-	buf_s32_t num_of_members = size / buf->arr.size;
+	buf_s32_t num_of_members = size / _buf_arr_member_size(buf);
 	/* In case of array we should pass number of members, not size of the memory */
 	return buf_arr_add_members(buf, new_data, num_of_members);
 }
@@ -327,9 +343,9 @@ ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_
 
 
 	/* Test we have enough members to delete */
-	if (buf->arr.members - from_member < num_of_new_members) {
+	if (_buf_arr_members(buf) - from_member < num_of_new_members) {
 		DE("Asked to delete more members than possible: members in array %d, askeed to delete from %d amount %d\n",
-		   buf->arr.members, from_member, num_of_new_members);
+		   _buf_arr_members(buf), from_member, num_of_new_members);
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -338,10 +354,10 @@ ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_
 
 
 	/* Size of memory to me removed */
-	size_t memory_to_remove_size = buf->arr.size * num_of_new_members;
+	size_t memory_to_remove_size = _buf_arr_member_size(buf) * num_of_new_members;
 
 	/* Move to: the memory where the first member to remove */
-	char   *move_to              = buf->data + (from_member * buf->arr.size);
+	char   *move_to              = buf->data + (from_member * _buf_arr_member_size(buf));
 
 	/* Move from: The first member after the memory section to be removed,
 	   which is the first member to remove + size of memory of all member to remove */
@@ -360,13 +376,13 @@ ret_t buf_arr_rm(buf_t *buf, const buf_s32_t member_index)
 	return buf_arr_rm_members(buf, member_index, 1);
 }
 
-void *buf_arr_member_ptr(buf_t *buf, const buf_s32_t member_index)
+void *buf_arr_get_member_ptr(buf_t *buf, const buf_s32_t member_index)
 {
 	T_RET_ABORT(buf, NULL);
 	T_RET_ABORT(buf->data, NULL);
 
-	if (member_index > buf->arr.members) {
-		DE("Asked a index (%d) > buf->arr.members (%d)\n", member_index, buf->arr.members);
+	if (member_index > _buf_arr_members(buf)) {
+		DE("Asked a index (%d) > buf->arr.members (%d)\n", member_index, _buf_arr_members(buf));
 		TRY_ABORT();
 		return NULL;
 	}
@@ -377,7 +393,7 @@ void *buf_arr_member_ptr(buf_t *buf, const buf_s32_t member_index)
 		return NULL;
 	}
 
-	return buf->data + (buf->arr.size * member_index);
+	return buf->data + (_buf_arr_member_size(buf) * member_index);
 }
 
 ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, buf_s32_t dest_memory_size)
@@ -385,21 +401,21 @@ ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, 
 	TESTP_BUF_DATA(buf);
 	T_RET_ABORT(dest, -ECANCELED);
 
-	if (dest_memory_size < buf->arr.size) {
+	if (dest_memory_size < _buf_arr_member_size(buf)) {
 		DE("Destination beffer not large enough: %d, require at least %d\n",
-		   dest_memory_size, buf->arr.size);
+		   dest_memory_size, _buf_arr_member_size(buf));
 		TRY_ABORT();
 		return -ECANCELED;
 	}
 
-	void *ptr = buf_arr_member_ptr(buf, member_index);
+	void *ptr = buf_arr_get_member_ptr(buf, member_index);
 	if (NULL == ptr) {
 		DE("Can not get pointer of asked memner\n");
 		TRY_ABORT();
 		return -BUFT_BAD;
 	}
 
-	memcpy(dest, ptr, buf->arr.size);
+	memcpy(dest, ptr, _buf_arr_member_size(buf));
 	return BUFT_OK;
 }
 
@@ -455,11 +471,11 @@ ret_t buf_arr_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	if (buf->data) {
 		/* Security: zero memory before it freed */
-		memset(buf->data, 0, buf_room(buf));
+		memset(buf->data, 0, buf_get_room_count(buf));
 		free(buf->data);
 	}
 
-	if (BUFT_OK != buf_set_room(buf, 0)) {
+	if (BUFT_OK != buf_set_room_count(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
 		return (-BUFT_SET_ROOM_SIZE);
 	}

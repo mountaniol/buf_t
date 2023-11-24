@@ -1,11 +1,12 @@
 #GCC=gcc
+AFL=~/src/exaware/AFLplusplus/afl-gcc 
 GCC=gcc-10
 AR=ar
 #GCC=clang-10
 CFLAGS=-Wall -Wextra -Wpedantic -rdynamic -O2
-DEBUG=-DDEBUG2
-#DEBUG=-DDEBUG3
-#DEBUG += -DDERROR3
+#DEBUG=-DDEBUG2
+DEBUG=-DDEBUG3
+#DEBUG += -DDERROR
 #CFLAGS += -fanalyzer
 
 #GCCVERSION=$(shell gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$/&00/')
@@ -39,7 +40,7 @@ btest_a: buf
 	$(GCC) $(CFLAGS) -ggdb $(DEBUG) buf_t_test.c $(BUF_A) -o $(BUF_TEST)
 
 bfuzz: buf
-	$(GCC) $(CFLAGS) -ggdb $(DEBUG) buf_t_fuzzer.c $(BUF_A) -o $(BUF_FUZZER)
+	$(AFL) $(CFLAGS) -ggdb $(DEBUG) buf_t_fuzzer.c $(BUF_A) -o $(BUF_FUZZER)
 
 clean:
 	rm -f *.o $(BUF_A) $(BUF_TEST) $(BUF_FUZZER)

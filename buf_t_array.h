@@ -10,7 +10,7 @@
  * @return buf_s32_t Number of members
  * @details 
  */
-buf_s32_t buf_arr_members(buf_t *buf);
+buf_s32_t buf_arr_get_memberss_count(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)
@@ -21,7 +21,7 @@ buf_s32_t buf_arr_members(buf_t *buf);
  * @details Number of members must by 0 or it should be multiple
  *  		of buf->arr.size; otherwise an error returned
  */
-ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members);
+ret_t buf_set_arr_members_count(buf_t *buf, buf_s32_t new_members);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)
@@ -32,7 +32,7 @@ ret_t buf_set_arr_members(buf_t *buf, buf_s32_t new_members);
  *  	   On an error a negative value returned
  * @details 
  */
-buf_s32_t buf_arr_member_size(buf_t *buf);
+buf_s32_t buf_arr_get_member_size(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)
@@ -53,7 +53,7 @@ ret_t buf_set_arr_member_size(buf_t *buf, buf_s32_t new_size);
  * @details This function returns number of members * size of
  *  		one mebeber
  */
-buf_s64_t buf_arr_used(buf_t *buf);
+buf_s64_t buf_arr_get_used(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)
@@ -148,7 +148,7 @@ ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_
 
 /**
  * @author Sebastian Mountaniol (11/18/23)
- * @brief Remove one membere from the array buffer
+ * @brief Remove one member from the array buffer
  * @param buf_t* buf         Buffer to remove one member
  * @param const buf_s32_t member_index Index of member to
  *  			remove; the first member has 0 index
@@ -181,7 +181,7 @@ ret_t buf_array_set_used(/*@in@*//*@temp@*/buf_t *buf, buf_s64_t used);
  *  	   NULL on an error
  * @details The index must be >= 0 and <= the last member 
  */
-void *buf_arr_member_ptr(buf_t *buf, const buf_s32_t member_index);
+void *buf_arr_get_member_ptr(buf_t *buf, const buf_s32_t member_index);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)

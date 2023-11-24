@@ -33,4 +33,15 @@ extern /*@null@*/ /*@only@*/ void *zmalloc(size_t sz);
  *  		'asked' > 0
  */
 extern /*@null@*/ /*@only@*/ void *zmalloc_any(size_t asked, size_t *allocated);
+
+/**
+ * @author Sebastian Mountaniol (11/20/23)
+ * @brief Feel memory with 0 and then free the memory
+ * @param void* mem   Memory to free
+ * @param size_t size  Size of the memory area
+ * @return int return 0 on success, -1 in case ULL pointer
+ *  	   received
+ * @details This function make hacker's life harder :)
+ */
+extern int zfree_size(void *mem, size_t size);
 #endif /* _SEC_MEMORY_H_ */

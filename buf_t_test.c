@@ -20,6 +20,149 @@ int verbose = 1;
 #define PSUCCESS(x, num) do{PSPLITTER2();printf("PASS:        [%s] / test # %.3d\n", x, num);} while(0)
 #define PFAIL(x, num)   do{PSPLITTER2(); printf("FAIL:        [%s] / test # %.3d [line +%d]\n", x, num, __LINE__);} while(0)
 
+/**
+ * @author Sebastian Mountaniol (11/22/23)
+ * @brief Allocate buf_t with given size; abort on falure
+ * @param const int test_num Test number
+ * @param const char* from_func Caller function
+ * @param const int line     Line from where it was called
+ * @return buf_t* Allocated buffer 
+ * @details 
+ */
+buf_t *allocate_buf(const buf_s64_t sz, const int test_num, const char *from_func, const int line)
+{
+	buf_t *buf = buf_new(sz);
+	if (NULL == buf) {
+		DE("Cant allocate buf size: %ld / from %s +%d", sz, from_func, line);
+		PFAIL("Cant allocate buf",test_num);
+		abort();
+	}
+
+	return buf;
+}
+
+/**
+ * @author Sebastian Mountaniol (11/22/23)
+ * @brief Free the buffer; abort on error on 
+ * @param buf_t* buf      Buffer to free
+ * @param const int test_num Test number
+ * @param const char* from_func Caller function
+ * @param const int line     Line from where it was called
+ * @details 
+ */
+void free_buf(buf_t *buf, const int test_num, const char *from_func, const int line)
+{
+	if (BUFT_OK != buf_free(buf)) {
+		DE("Cant free buf / from %s +%d", from_func, line);
+		PFAIL("Can not free the buffer", test_num);
+		abort();
+	}
+}
+
+
+/**** Function tests ****/
+
+void test_func_(int test_num)
+{
+}
+
+void test_func_buf_get_data_ptr(int test_num)
+{
+}
+
+void test_func_buf_data_is_null(int test_num)
+{
+}
+
+void test_func_buf_is_valid(int test_num)
+{
+}
+
+void test_func_buf_to_data(int test_num)
+{
+}
+
+void test_func_buf_clean(int test_num)
+{
+}
+void test_func_buf_add_room(int test_num)
+{
+}
+void test_func_buf_test_room(int test_num)
+{
+}
+
+void test_func_buf_set_used(int test_num)
+{
+}
+
+void test_func_buf_inc_used(int test_num)
+{
+}
+
+void test_func_buf_dec_used(int test_num)
+{
+}
+
+void test_func_buf_room(int test_num)
+{
+}
+
+void test_func_buf_set_room(int test_num)
+{
+}
+
+void test_func_buf_inc_room(int test_num)
+{
+}
+
+void test_func_buf_dec_room(int test_num)
+{
+}
+
+void test_func_buf_pack(int test_num)
+{
+}
+
+void test_func_buf_is_change_allowed(int test_num)
+{
+}
+
+void test_func_buf_lock(int test_num)
+{
+}
+
+void test_func_buf_set_canary(int test_num)
+{
+}
+
+void test_func_buf_force_canary(int test_num)
+{
+}
+
+void test_func_buf_test_canary(int test_num)
+{
+}
+
+void test_func_buf_get_canary(int test_num)
+{
+}
+
+void test_func_buf_detect_used(int test_num)
+{
+}
+
+#if 0 /* SEB */
+void test_func_(int test_num){
+}
+#endif
+
+
+
+
+
+/**** Functional tests ****/
+
 /* Create buffer with 0 size data */
 void test_buf_new_zero_size(int test_num)
 {
@@ -27,16 +170,12 @@ void test_buf_new_zero_size(int test_num)
 	PSPLITTER();
 
 	PSTART("allocate 0 size buffer", test_num);
-	buf = buf_new(0);
-	if (NULL == buf) {
-		PFAIL("Cant allocate 0 size buf", test_num);
-		abort();
-	}
+	buf = allocate_buf(0, test_num, __func__, __LINE__);
 
 	PSTEP("Buffer allocated with 0 room size");
 
-	if (buf_used(buf) != 0 || buf_room(buf) != 0) {
-		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_used(buf), buf_room(buf));
+	if (buf_get_used(buf) != 0 || buf_get_room_count(buf) != 0) {
+		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_get_used(buf), buf_get_room_count(buf));
 		PFAIL("0 size buffer", test_num);
 		abort();
 	}
@@ -52,10 +191,7 @@ void test_buf_new_zero_size(int test_num)
 
 	PSTEP("Tested: buf->data == NULL");
 
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSTEP("Released buf");
 	PSUCCESS("allocate 0 size buffer", test_num);
 }
@@ -72,18 +208,11 @@ void test_buf_new_increasing_size(int test_num)
 	for (i = 1; i < 16; i++) {
 		size = size << 1;
 
-		buf = buf_new(size);
-		if (NULL == buf) {
-			PFAIL("increasing size buffer", test_num);
-			/*@ignore@*/
-			printf("Tried to allocate: %zu size\n", size);
-			/*@end@*/
-			abort();
-		}
+		buf = allocate_buf(size, test_num, __func__, __LINE__);
 
-		if ((uint64_t)buf_used(buf) != 0 || (uint64_t)buf_room(buf) != size) {
+		if ((uint64_t)buf_get_used(buf) != 0 || (uint64_t)buf_get_room_count(buf) != size) {
 			/*@ignore@*/
-			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_used(buf), buf_room(buf), size);
+			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_get_used(buf), buf_get_room_count(buf), size);
 			/*@end@*/
 			PFAIL("increasing size buffer", test_num);
 			abort();
@@ -98,10 +227,8 @@ void test_buf_new_increasing_size(int test_num)
 			abort();
 		}
 
-		if (BUFT_OK != buf_free(buf)) {
-			PFAIL("Can not free the buffer", test_num);
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
+
 	}
 
 	/*@ignore@*/
@@ -176,11 +303,11 @@ void test_buf_string(size_t buffer_init_size, int test_num)
 		abort();
 	}
 
-	if (buf_used(buf) != (buf_s64_t)strlen(str) + (buf_s64_t)strlen(str2)) {
+	if (buf_get_used(buf) != (buf_s64_t)strlen(str) + (buf_s64_t)strlen(str2)) {
 		/*@ignore@*/
 		printf("After buf_add: wrong buf->used\n");
 		printf("Expected: buf->used = %zu\n", strlen(str) + strlen(str2));
-		printf("Current : buf->used = %ld\n", buf_used(buf));
+		printf("Current : buf->used = %ld\n", buf_get_used(buf));
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		/*@end@*/
@@ -205,11 +332,7 @@ void test_buf_string(size_t buffer_init_size, int test_num)
 	}
 
 	//printf("%s\n", buf->data);
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("buf_string: Can not free the buffer", test_num);
-		abort();
-	}
-
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSUCCESS("buf_string", test_num);
 }
 
@@ -262,7 +385,7 @@ void test_buf_pack_string(int test_num)
 		abort();
 	}
 
-	if (buf_used(buf) != (len + len2)) {
+	if (buf_get_used(buf) != (len + len2)) {
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
@@ -280,15 +403,15 @@ void test_buf_pack_string(int test_num)
 	}
 
 	/* Test that the packed buffer has the right size */
-	if (buf_used(buf) != (len + len2)) {
-		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_used(buf), (len + len2));
+	if (buf_get_used(buf) != (len + len2)) {
+		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_get_used(buf), (len + len2));
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf_used(buf) != buf_room(buf) - 1) {
-		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_used(buf), buf_room(buf));
+	if (buf_get_used(buf) != buf_get_room_count(buf) - 1) {
+		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_get_used(buf), buf_get_room_count(buf));
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
@@ -312,10 +435,7 @@ void test_buf_pack_string(int test_num)
 		abort();
 	}
 	//printf("%s\n", buf_data(buf));
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("buf_pack_string: Can npt free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	free(con_str);
 
 	PSUCCESS("buf_pack_string", test_num);
@@ -394,8 +514,8 @@ void test_buf_str_concat(int test_num)
 	PSTEP("string length match 1");
 
 	/* Test that the packed buffer has the right size */
-	if (buf_used(buf1) != (len1 + len2)) {
-		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_used(buf1), (len1 + len2));
+	if (buf_get_used(buf1) != (len1 + len2)) {
+		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_get_used(buf1), (len1 + len2));
 		PFAIL("buf_str_concat: wrong buf_used()", test_num);
 		abort();
 	}
@@ -403,8 +523,8 @@ void test_buf_str_concat(int test_num)
 	PSTEP("string length match 2");
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf_used(buf1) != buf_room(buf1) - 1) {
-		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_used(buf1), buf_room(buf1));
+	if (buf_get_used(buf1) != buf_get_room_count(buf1) - 1) {
+		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_get_used(buf1), buf_get_room_count(buf1));
 		PFAIL("buf_str_concat: buf_used(buf1) != buf_room(buf1) - 1", test_num);
 		abort();
 	}
@@ -432,16 +552,8 @@ void test_buf_str_concat(int test_num)
 
 	PSTEP("strings compared OK");
 
-	if (BUFT_OK != buf_free(buf1)) {
-		PFAIL("buf_str_concat: can't free buf1", test_num);
-		abort();
-	}
-
-	if (BUFT_OK != buf_free(buf2)) {
-		PFAIL("buf_str_concat: can't free buf2", test_num);
-		abort();
-	}
-
+	free_buf(buf1, test_num, __func__, __LINE__);
+	free_buf(buf2, test_num, __func__, __LINE__);
 	free(con_str);
 
 	PSUCCESS("buf_str_concat", test_num);
@@ -460,11 +572,7 @@ void test_buf_pack(int test_num)
 
 	PSTART("buf_pack", test_num);
 
-	buf = buf_new(1024);
-	if (NULL == buf) {
-		PFAIL("buf_string: Can't allocate buf", test_num);
-		abort();
-	}
+	buf = allocate_buf(1024, test_num, __func__, __LINE__);
 
 	PSTEP("Allocated buffer");
 
@@ -496,7 +604,7 @@ void test_buf_pack(int test_num)
 
 	PSTEP("Added buffer into buf_t");
 
-	if (buf_used(buf) != buf_data_size) {
+	if (buf_get_used(buf) != buf_data_size) {
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
@@ -519,25 +627,22 @@ void test_buf_pack(int test_num)
 	PSTEP("Packed buf_t");
 
 	/* Test that the packed buffer has the right size */
-	if (buf_used(buf) != buf_data_size) {
+	if (buf_get_used(buf) != buf_data_size) {
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
 	PSTEP("That buf->used is right");
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf_used(buf) != buf_room(buf)) {
-		printf("buf->room (%ld) != buf->used (%ld)\n", buf_room(buf), buf_used(buf));
+	if (buf_get_used(buf) != buf_get_room_count(buf)) {
+		printf("buf->room (%ld) != buf->used (%ld)\n", buf_get_room_count(buf), buf_get_used(buf));
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
 	PSTEP("Tested room and used");
 
 	//printf("%s\n", buf->data);
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	free(_buf_data);
 
 	PSUCCESS("buf_pack", test_num);
@@ -562,17 +667,10 @@ void test_buf_canary(int test_num)
 	flags = buf_save_flags();
 	buf_unset_abort_flag();
 
-	buf = buf_new(0);
-	if (NULL == buf) {
-		PFAIL("buf_string: Can't allocate buf", test_num);
-		abort();
-	}
+	buf = allocate_buf(0, test_num, __func__, __LINE__);
 
 	if (BUFT_OK != buf_mark_canary(buf)) {
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		PFAIL("buf_canary: Can't set CANARY flag", test_num);
 		abort();
 	}
@@ -582,10 +680,7 @@ void test_buf_canary(int test_num)
 	_buf_data = malloc(256);
 	if (NULL == _buf_data) {
 		PFAIL("Can't allocate buffer", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
@@ -602,16 +697,13 @@ void test_buf_canary(int test_num)
 
 	if (BUFT_OK != buf_add(buf, _buf_data, buf_data_size - 1)) {
 		PFAIL("buf_pack: can't add", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
 	PSTEP("Added buffer into buf_t");
 
-	if (buf_used(buf) != buf_data_size - 1) {
+	if (buf_get_used(buf) != buf_data_size - 1) {
 		PFAIL("buf_pack", test_num);
 		if (BUFT_OK != buf_free(buf)) {
 			PRINT("Can't release buffer");
@@ -624,10 +716,7 @@ void test_buf_canary(int test_num)
 	//if (0 != memcmp(buf->data, buf_data, buf_data_size - 1)) {
 	if (0 != memcmp(buf_get_data_ptr(buf), _buf_data, buf_data_size - 1)) {
 		PFAIL("buf_canary: buffer is wrong", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
@@ -636,10 +725,7 @@ void test_buf_canary(int test_num)
 	/* Test canary */
 	if (BUFT_OK != buf_test_canary(buf)) {
 		PFAIL("buf_canary: bad canary", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
@@ -659,10 +745,7 @@ void test_buf_canary(int test_num)
 	/* Test canary: we expect it to be wrong */
 	if (BUFT_OK == buf_test_canary(buf)) {
 		PFAIL("buf_canary: good canary but must be bad", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
@@ -672,10 +755,7 @@ void test_buf_canary(int test_num)
 
 	if (BUFT_OK != buf_set_canary(buf)) {
 		PFAIL("buf_canary: can't set canary on the buffer", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
@@ -684,10 +764,7 @@ void test_buf_canary(int test_num)
 	/* Test canary again */
 	if (BUFT_OK != buf_test_canary(buf)) {
 		PFAIL("buf_canary: bad canary but must be good", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
@@ -696,25 +773,16 @@ void test_buf_canary(int test_num)
 	/* Run buf validation */
 	if (BUFT_OK != buf_is_valid(buf)) {
 		PFAIL("buf_canary: buffer is not valid", test_num);
-		if (BUFT_OK != buf_free(buf)) {
-			PRINT("Can't release buffer");
-			abort();
-		}
+		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
 
 	PSTEP("Buffer is valid");
 
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("buf_canary: buf_free returned not OK", test_num);
-		free(_buf_data);
-		abort();
-	}
-
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSTEP("Buffer released");
 
 	free(_buf_data);
-
 	buf_restore_flags(flags);
 
 	PSUCCESS("buf_canary", test_num);
@@ -736,8 +804,8 @@ void test_buf_array_zero_size(int test_num)
 
 	PSTEP("Buffer array allocated with 0 room size");
 
-	if (buf_used(buf) != 0 || buf_room(buf) != 0) {
-		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_used(buf), buf_room(buf));
+	if (buf_get_used(buf) != 0 || buf_get_room_count(buf) != 0) {
+		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_get_used(buf), buf_get_room_count(buf));
 		PFAIL("0 size buffer", test_num);
 		abort();
 	}
@@ -753,10 +821,7 @@ void test_buf_array_zero_size(int test_num)
 
 	PSTEP("Tested: buf->data == NULL");
 
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSTEP("Released buf");
 	PSUCCESS("allocate 0 size buffer", test_num);
 }
@@ -777,30 +842,30 @@ void test_buf_array_allocate_with_size(int test_num, int element_size, int num_o
 
 	int memory_to_expect = element_size * num_of_elements;
 
-	if (buf_used(buf) != 0) {
+	if (buf_get_used(buf) != 0) {
 		printf("Arr buffer: used expected 0, but it is (%ld)\n",
-			   buf_used(buf));
+			   buf_get_used(buf));
 		PFAIL("Arr buffer, used is wrong", test_num);
 		abort();
 	}
 
-	if (buf_room(buf) != memory_to_expect) {
+	if (buf_get_room_count(buf) != memory_to_expect) {
 		printf("Arr buffer: oom (%ld), expected (%d)\n",
-			   buf_room(buf), memory_to_expect);
+			   buf_get_room_count(buf), memory_to_expect);
 		PFAIL("Arr size buffer, room is worng", test_num);
 		abort();
 	}
 
-	if (buf->arr.members != 0) {
+	if (buf_arr_get_memberss_count(buf) != 0) {
 		printf("Arr size buffer: buf->arr.members (%d) != 0 as expected\n",
-			   buf->arr.members);
+			   buf_arr_get_memberss_count(buf));
 		PFAIL("Array buffer: buf->arr.members != 0", test_num);
 		abort();
 	}
 
-	if (buf->arr.size != element_size) {
+	if (buf_arr_get_member_size(buf) != element_size) {
 		printf("Arr size buffer: buf->arr.size != element_size (%d) != (%d)\n",
-			   buf->arr.size, element_size);
+			   buf_arr_get_member_size(buf), element_size);
 		PFAIL("Array buffer: buf->arr.size", test_num);
 		abort();
 	}
@@ -816,10 +881,7 @@ void test_buf_array_allocate_with_size(int test_num, int element_size, int num_o
 
 	PSTEP("Tested: buf->data != NULL");
 
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSTEP("Released buf");
 	PSUCCESS("Allocate array buffer", test_num);
 }
@@ -844,7 +906,7 @@ void test_buf_array_allocate_add(int test_num, int num_of_elements)
 	for (counter = 0; counter < num_of_elements; counter++) {
 		ret_t rc = buf_arr_add(buf, &counter);
 		if (BUFT_OK != rc) {
-			printf("Failed to add an element, counter = %d\n",counter);
+			printf("Failed to add an element, counter = %d\n", counter);
 			PFAIL("Array buffer, adding member", test_num);
 		}
 	}
@@ -859,19 +921,16 @@ void test_buf_array_allocate_add(int test_num, int num_of_elements)
 
 	PSTEP("buf->data != NULL");
 
-	if (buf_arr_members(buf) != num_of_elements) {
+	if (buf_arr_get_memberss_count(buf) != num_of_elements) {
 		printf("Array size buffer: number of members is (%d), expected (%d)\n",
-			   buf_arr_members(buf), num_of_elements);
+			   buf_arr_get_memberss_count(buf), num_of_elements);
 		PFAIL("Array buffer, wrong number of elements", test_num);
 		abort();
 	}
 
 	PSTEP("Tested: buf_arr_members(buf) == num_of_elements");
 
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSTEP("Released buf");
 	PSUCCESS("Add members to the array buffer", test_num);
 }
@@ -896,7 +955,7 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 	for (counter = 0; counter < num_of_elements; counter++) {
 		ret_t rc = buf_arr_add(buf, &counter);
 		if (BUFT_OK != rc) {
-			printf("Failed to add an element, counter = %d\n",counter);
+			printf("Failed to add an element, counter = %d\n", counter);
 			PFAIL("Array buffer, adding member", test_num);
 		}
 	}
@@ -911,9 +970,9 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 
 	PSTEP("buf->data != NULL");
 
-	if (buf_arr_members(buf) != num_of_elements) {
+	if (buf_arr_get_memberss_count(buf) != num_of_elements) {
 		printf("Array size buffer: number of members is (%d), expected (%d)\n",
-			   buf_arr_members(buf), num_of_elements);
+			   buf_arr_get_memberss_count(buf), num_of_elements);
 		PFAIL("Array buffer, wrong number of elements", test_num);
 		abort();
 	}
@@ -925,24 +984,21 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 	for (counter = 0; counter < num_of_elements; counter++) {
 		ret_t rc = buf_arr_rm(buf, 0);
 		if (BUFT_OK != rc) {
-			printf("Failed to remove 0 element, counter = %d\n",counter);
+			printf("Failed to remove 0 element, counter = %d\n", counter);
 			PFAIL("Array buffer, removing member", test_num);
 		}
 
 		/* Number of elements must be decreased by counter */
-		if (buf_arr_members(buf) != num_of_elements - counter - 1) {
+		if (buf_arr_get_memberss_count(buf) != num_of_elements - counter - 1) {
 			printf("After removing %d element count of elements expected %d but it is %d\n",
-				   counter + 1, num_of_elements - counter - 1, buf_arr_members(buf));
+				   counter + 1, num_of_elements - counter - 1, buf_arr_get_memberss_count(buf));
 			PFAIL("Array buffer, removing member", test_num);
 		}
 	}
 
 	PSTEP("Tested: removed all members");
 
-	if (BUFT_OK != buf_free(buf)) {
-		PFAIL("Can not free the buffer", test_num);
-		abort();
-	}
+	free_buf(buf, test_num, __func__, __LINE__);
 	PSTEP("Released buf");
 	PSUCCESS("Add and remove members to the array buffer", test_num);
 }
@@ -950,10 +1006,12 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 int main(void)
 {
 	/* Abort on any error */
-	//DD("This is regular print\n");
-	//DDD("This is extended print\n");
-	//DE("This is error print\n");
-	//DDE("This is extended error print\n");
+	D("This is an regular D print\n");
+	DD("This is an extended DD print\n");
+	DDD("This is an extra extended DDD print\n");
+	DE("This is an error DE print\n");
+	DDE("This is an extended DDE error print\n");
+	DDDE("This is an extra extended DDDE error print\n");
 
 	buf_set_abort_flag();
 	test_buf_new_zero_size(1);

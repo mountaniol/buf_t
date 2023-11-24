@@ -228,12 +228,12 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		DE("The buffer doesn't have CANARY flag\n");
 		TRY_ABORT();
 		/*@ignore@*/
-		return (-BUFT_WRONG_BUF_FLAG);
+		return (-BUFT_NO_CANARY);
 		/*@end@*/
 	}
 
 	canary = BUF_T_CANARY_CHAR_PATTERN;
-	canary_p = (buf_t_canary_t *)(buf->data + buf_room(buf));
+	canary_p = (buf_t_canary_t *)(buf->data + buf_get_room_count(buf));
 	memcpy(canary_p, &canary, BUF_T_CANARY_SIZE);
 
 	/* Test that the canary pattern set */
@@ -245,7 +245,7 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	return (BUFT_OK);
 }
 
-buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf)
+buf_s64_t buf_get_used(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
@@ -255,12 +255,12 @@ buf_s64_t buf_used(/*@temp@*//*@in@*/buf_t *buf)
 		if (buf->ht.head <= buf->ht.tail) {
 			return (buf->ht.head - buf->ht.tail);
 		}
-		return (buf_room(buf) - (buf->ht.head - buf->ht.tail));
+		return (buf_get_room_count(buf) - (buf->ht.head - buf->ht.tail));
 	}
 
 	/* In case it is an array buffer */
 	if (BUFT_OK == buf_type_is_array(buf)) {
-		return buf_arr_used(buf);
+		return buf_arr_get_used(buf);
 	}
 
 	/* In other cases, just return the '->used' field */
@@ -327,9 +327,9 @@ ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 		return (-BUFT_BAD_BUFT_TYPE);
 	}
 
-	if (dec > buf_used(buf)) {
+	if (dec > buf_get_used(buf)) {
 		DE("Can not decrement buf->used: the dec > buf->used (%ld > %ld)\n",
-		   dec, buf_used(buf));
+		   dec, buf_get_used(buf));
 		return (-BUFT_OUT_OF_LIMIT_OP);
 	}
 
@@ -399,8 +399,8 @@ ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 	/* In case there is no space fpr CANARY tail,
 	   try to increase buffer space to keep CANARY */
 
-	if (buf_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE ||
-		buf_used(buf) == buf_room(buf)) {
+	if (buf_get_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE ||
+		buf_get_used(buf) == buf_get_room_count(buf)) {
 
 		/* Add room to keep CANARY tail */
 		int rc = buf_add_room(buf, BUF_T_CANARY_SIZE);
@@ -411,21 +411,21 @@ ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* If there no space to set CANARY tail, we abort the function */
-	if (buf_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
+	if (buf_get_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
 		DE("Buffer is to small for CANARY word\n");
 		TRY_ABORT();
 		return (-BUFT_TOO_SMALL);
 	}
 
 	/* The buffer is big enough but all allocated data is occupied */
-	if (buf_used(buf) == buf_room(buf)) {
+	if (buf_get_used(buf) == buf_get_room_count(buf)) {
 		if (BUFT_OK != buf_dec_used(buf, BUF_T_CANARY_SIZE)) {
 			DE("Can not decrement a buffer used value");
 			return (-BUFT_ALLOCATE);
 		}
 	}
 
-	if (BUFT_OK != buf_dec_room(buf, BUF_T_CANARY_SIZE)) {
+	if (BUFT_OK != buf_dec_room_count(buf, BUF_T_CANARY_SIZE)) {
 		DE("Can not decrement a buffer room value\n");
 		return (-BUFT_DECREMENT);
 	}
@@ -444,11 +444,11 @@ ret_t buf_test_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return (-BUFT_NO_CANARY);
 	}
 
-	if (0 == memcmp(buf->data + buf_room(buf), &canary, BUF_T_CANARY_SIZE)) {
+	if (0 == memcmp(buf->data + buf_get_room_count(buf), &canary, BUF_T_CANARY_SIZE)) {
 		return (BUFT_OK);
 	}
 
-	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf_room(buf)));
+	DE("The buf CANARY word is wrong, expected: %X, current: %X\n", BUF_T_CANARY_CHAR_PATTERN, (unsigned int)*(buf->data + buf_get_room_count(buf)));
 
 	TRY_ABORT();
 	return (-BUFT_BAD_CANARY);
@@ -466,7 +466,7 @@ buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	//memcpy(&canary, buf->data + buf->room, BUF_T_CANARY_SIZE);
-	canary_p = (buf_t_canary_t *)(buf->data + buf_room(buf));
+	canary_p = (buf_t_canary_t *)(buf->data + buf_get_room_count(buf));
 	return (*canary_p);
 }
 
@@ -492,7 +492,7 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	/* buf->used always <= buf->room */
 	/* TODO: not in case of CIRC buffer */
-	if (buf_used(buf) > buf_room(buf)) {
+	if (buf_get_used(buf) > buf_get_room_count(buf)) {
 		DE("Invalid buf: buf->used > buf->room\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_USED);
@@ -500,24 +500,24 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	/* The buf->data may be NULL if and only if both buf->used and buf->room == 0; However, we don't
 	   check buf->used: we tested that it <= buf->room already */
-	if ((NULL == buf->data) && (buf_room(buf) > 0)) {
-		DE("Invalid buf: buf->data == NULL but buf->room > 0 (%ld)\n", buf_room(buf));
+	if ((NULL == buf->data) && (buf_get_room_count(buf) > 0)) {
+		DE("Invalid buf: buf->data == NULL but buf->room > 0 (%ld)\n", buf_get_room_count(buf));
 		TRY_ABORT();
 		return (-BUFT_NULL_DATA);
 	}
 
 	/* And vice versa: if buf->data != NULL the buf->room must be > 0 */
-	if ((NULL != buf->data) && (0 == buf_room(buf))) {
+	if ((NULL != buf->data) && (0 == buf_get_room_count(buf))) {
 		DE("Invalid buf: buf->data != NULL but buf->room == 0\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_ROOM);
 	}
 
 	/* If the buffer have canary, test it; if the canary is bad, stop */
-	if (buf_room(buf) > 0 && 
+	if (buf_get_room_count(buf) > 0 &&
 		(BUFT_YES == buf_is_canary(buf)) &&
 		(BUFT_OK != buf_test_canary(buf))) {
-		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_room(buf);
+		buf_t_canary_t *canary_p = (buf_t_canary_t *)buf->data + buf_get_room_count(buf);
 		DE("The buffer was overwritten: canary word is wrong\n");
 		DE("Expected canary: %X, current canary: %X\n", BUF_T_CANARY_CHAR_PATTERN, *canary_p);
 		TRY_ABORT();
@@ -527,8 +527,8 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	/* TODO: Is it really a wrong situation? We can lovk and unlock the buffer */
 	/* In Read-Only buffer buf->room must be == bub->used */
 	if ((BUFT_YES == buf_is_immutable(buf)) &&
-		(buf_room(buf) != buf_used(buf))) {
-		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_used(buf), buf_room(buf));
+		(buf_get_room_count(buf) != buf_get_used(buf))) {
+		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_get_used(buf), buf_get_room_count(buf));
 		TRY_ABORT();
 		return (-BUFT_IMMUTABLE_DAMAGED);
 	}
@@ -549,23 +549,12 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	switch (BUF_TYPE(buf)) {
-	case BUF_T_TYPE_RAW:
-		/* For RAW buffer no additional test needed */
-		return BUFT_OK;
-		break;
 	case BUF_T_TYPE_STRING:
 		return buf_str_is_valid(buf);
-		break;
 	case BUF_T_TYPE_ARR:
 		return buf_array_is_valid(buf);
-		break;
-	default:
-		DE("Unknown buffer type: %d\n", BUF_TYPE(buf));
-		TRY_ABORT();
-		return (-BUFT_UNKNOWN_TYPE);
 	}
-
-	return (BUFT_OK);
+	return (ret);
 }
 
 /***** TEST BUFFER TYPE ******/
@@ -647,7 +636,7 @@ int buf_type_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* TODO: in case of CIRC buffer it is wrong */
-	if (BUFT_OK != buf_set_room(buf, size)) {
+	if (BUFT_OK != buf_set_room_count(buf, size)) {
 		DE("Can not set a new 'room' value\n");
 		free(buf);
 		return (NULL);
@@ -660,7 +649,7 @@ int buf_type_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* Set CANARY word */
-	if (size > 0 && 
+	if (size > 0 &&
 		(BUFT_YES == buf_is_canary(buf)) &&
 		BUFT_OK != buf_set_canary(buf)) {
 		DE("Can't set CANARY word\n");
@@ -704,7 +693,7 @@ ret_t buf_set_data(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@*/ /*@only
 	}
 
 	buf->data = data;
-	rc = buf_set_room(buf, size);
+	rc = buf_set_room_count(buf, size);
 	if (BUFT_OK != rc) {
 		DE("Can not set a new value to the buffer\n");
 		return (rc);
@@ -763,7 +752,7 @@ ret_t buf_set_data_immutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@null@
 		return (NULL);
 	}
 
-	if (BUFT_OK != buf_set_room(buf, 0)) {
+	if (BUFT_OK != buf_set_room_count(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
 		TRY_ABORT();
 		return (data);
@@ -833,6 +822,70 @@ ret_t buf_data_is_null(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	return BUFT_NO;
 }
 
+
+/*
+ * Accordding to researches, realloc() should be used only for the
+ * buffer decreasing. It shows much more efficient execution.
+ * However, if the buffer increased, the malloc() + memcpy()
+ * is more efficient in most cases.
+ * https://copyprogramming.com/howto/differences-between-using-realloc-vs-free-malloc-functions
+ */
+/**
+ * @author Sebastian Mountaniol (11/23/23)
+ * @brief Increase size of the buffer using malloc() + memcpy()
+ * @param buf_t* buf     Buffer to increase the internal buffer size
+ * @param buf_s64_t new_size New size (absolute) to allocate
+ * @return ret_t BUFT_OK on success, a negative error code on an error
+ * @details This function only allocate memory
+ * and copy the content of the old buffer into the new one.
+ * It does not modify values of ->used and ->room, the called must do it.
+ */
+static ret_t buf_increase(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t new_size)
+{
+	buf_s64_t size_to_clean = 0;
+
+	TESTP(buf, -BUFT_NULL_POINTER);
+	buf_s64_t buf_used_size = buf_get_used(buf);
+	buf_s64_t buf_room_size = buf_get_room_count(buf);
+
+	if (buf_room_size >= new_size) {
+		DE("This function supposed to increase memory; the asked used memory size (%ld) <= existing (%ld)\n",
+		   new_size, buf_room_size);
+		return (-BUFT_BAD_SIZE);
+	}
+
+	/* Allocate the new buffer */
+	char *tmp = malloc(new_size);
+
+	if (NULL == tmp) {
+		DE("Could not allocate a new buffer, asked size is %ld\n", new_size);
+		return (-BUFT_ALLOCATE);
+	}
+
+	/* Copy only used data from the old buffer data to the new memory */
+	if (buf_used_size > 0) {
+		memcpy(tmp, buf->data, buf_used_size);
+	}
+
+	/* Calculate what is the size of the new buffer tail to be filled with 0 */
+	size_to_clean = new_size - buf_used_size;
+
+	if (size_to_clean > 0) {
+		/* Clean the tail of the new buffer, it starts from the ofssed buf_used */
+		memset(tmp + buf_used_size, 0, size_to_clean);
+	}
+
+	/* If there is memory in the buffer, release it */
+	if (NULL != buf->data) {
+		/* Considering possible security issues, we fill the old data with zeros */
+		memset(buf->data, 0, buf->room);
+		free(buf->data);
+	}
+
+	buf->data = tmp;
+	return BUFT_OK;
+}
+
 /**
  * @author Sebastian Mountaniol (11/19/23)
  * @brief Internal function to change ->data size 
@@ -843,32 +896,61 @@ ret_t buf_data_is_null(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
  *  		wheather the buffer is immutable or locked.
  *  		All there tests performed before
  */
-static ret_t buf_realloc(/*@temp@*//*@in@*//*@special@*/buf_t *buf, size_t new_size)
+static ret_t buf_resize(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t new_size)
 /*@allocates buf->data@*/
 {
-	void   *tmp;
-#ifdef S_SPLINT_S
-	tmp = zmalloc(buf_room(buf) + new_size);
-	memcpy(tmp, buf_get_data_ptr(buf), buf_room(buf));
-#else
-	tmp = realloc(buf->data, new_size);
-#endif
+	TESTP(buf, -BUFT_NULL_POINTER);
+	void      *tmp             = NULL;
+	buf_s64_t buf_room_current = buf_get_room_count(buf);
 
-	/* Case 1: realloc can't reallocate */
+	/* A special case: new data size if the same as current, we should do nothing */
+	if (new_size == buf_room_current) {
+		return (BUFT_OK);
+	}
+
+	/* A mini test of the buffer validity:
+	 * if the buffer ->data is NULL but ->room is > 0,
+	   it is not a normal situation  */
+	if ((NULL == buf_get_data_ptr(buf)) && (buf_room_current > 0)) {
+		return (-BUFT_BAD_ROOM);
+	}
+
+	/* We use malloc() + memcpy() in case of buffer new size > current size
+	   See comments before buf_increase() */
+	if (buf_room_current < new_size) {
+		return buf_increase(buf, new_size);
+	}
+
+	/* A special case: if the new size == 0, we just remove the data */
+	if (0 == new_size) {
+		free(buf->data);
+		buf->data = 0;
+		return BUFT_OK;
+	}
+
+	/* If we are here, it means that 0 < (new size) < (existing size) */
+	tmp = realloc(buf->data, new_size);
+
+	/*
+	 * Note:
+	 * realloc() always returns a valid pointer in case of success.
+	 * The pointer can point to the same memory where currentrly placed ->data,
+	 * ot it can point to another memory buffer.
+	 * However, it returns NULL only in case of aan error
+	 */
+
+	/*
+	 * On error: realloc can't reallocate.
+	 * According to 'man realloc':
+	 * "If realloc() fails, the original block is left untouched; it is not freed or moved"
+	 */
 	if (NULL == tmp) {
 		DE("Realloc failed\n");
 		return (-BUFT_ALLOCATE);
 	}
 
-	/* Case 2: realloc succeeded, new memory returned */
-	/* No need to free the old memory - done by realloc */
-	if (NULL != tmp) {
-#ifdef S_SPLINT_S
-		free(buf->data);
-#endif
-		buf->data = tmp;
-	}
-
+	/* Here: a valid pointer is returned, reassign it to the buf->data */
+	buf->data = tmp;
 	return BUFT_OK;
 }
 
@@ -899,18 +981,18 @@ ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t size)
 		canary = BUF_T_CANARY_SIZE;
 	}
 
-	if (BUFT_OK != buf_realloc(buf, buf_room(buf) + size + canary)) {
+	if (BUFT_OK != buf_resize(buf, buf_get_room_count(buf) + size + canary)) {
 		DE("Can not reallocate buf->data\n");
 		return (-BUFT_ALLOCATE);
 	}
 
 	/* Clean newely allocated memory */
-	memset(buf->data + buf_room(buf), 0, size + canary);
+	memset(buf->data + buf_get_room_count(buf), 0, size + canary);
 
 	/* Case 3: realloc succeeded, the same pointer - we do nothing */
 	/* <Beeep> */
 
-	if (BUFT_OK != buf_inc_room(buf, size)) {
+	if (BUFT_OK != buf_inc_room_count(buf, size)) {
 		DE("Can not increment 'room' value\n");
 		return (-BUFT_INCREMENT);
 	}
@@ -939,7 +1021,7 @@ ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 		return (-BUFT_BAD_SIZE);
 	}
 
-	if (buf_used(buf) + expect <= buf_room(buf)) {
+	if (buf_get_used(buf) + expect <= buf_get_room_count(buf)) {
 		return (BUFT_OK);
 	}
 
@@ -953,26 +1035,28 @@ ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* If buffer is invalid, it can signal memory corruption */
-	if (BUFT_OK != buf_is_valid(buf)) {
+	rc = buf_is_valid(buf);
+	if (BUFT_OK != rc) {
 		DE("Warning: buffer is invalid\n");
 		TRY_ABORT();
+		return (rc);
 	}
 
-	rc = buf_is_change_allowed(buf);
-
-	if (BUFT_OK != rc) {
-		DE("Buffer manipulation is not allowed, the buffer is immutable or locked\n");
+	/* If the buffer is locked, we stop the operation, it must be unlocked first */
+	if (BUFT_YES == buf_is_locked(buf)) {
+		DE("Can not clean a locked buffer; unlock it first\n");
 		TRY_ABORT();
-		return rc;
+		return (-BUFT_IS_LOCKED);
 	}
 
-	if (buf->data) {
+	if (NULL != buf->data) {
 		/* Security: zero memory before it freed */
-		memset(buf->data, 0, buf_room(buf));
+		memset(buf->data, 0, buf_get_room_count(buf));
 		free(buf->data);
+		buf->data = NULL;
 	}
 
-	if (BUFT_OK != buf_set_room(buf, 0)) {
+	if (BUFT_OK != buf_set_room_count(buf, 0)) {
 		DE("Can not set a new value to the buffer\n");
 		return (-BUFT_SET_ROOM_SIZE);
 	}
@@ -983,35 +1067,32 @@ ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	buf->flags = 0;
-
 	return (BUFT_OK);
 }
 
 ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 /*@releases buf->data@*/
 {
+	int rc;
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (BUFT_OK != buf_is_valid(buf)) {
 		DE("Warning: buffer is invalid\n");
 	}
 
-	/* We asked to free a constant buffer; to do it, we must to remove the CONSTANT flag */
-	if (BUFT_YES == buf_is_immutable(buf)) {
-		buf_unmark_immutable(buf);
-	}
-
 	/* If we asked to clean a locked buffer, we return an error.
 	   The user must unlock it before it can be freed */
-	if (BUFT_YES == buf_is_locked(buf)) {
+	rc = buf_is_locked(buf);
+	if (BUFT_YES == rc) {
 		DE("Asked to free a locked buffer\n");
-		return (-BUFT_IS_LOCKED);
+		return (rc);
 	}
 
-	if (BUFT_OK != buf_clean(buf)) {
+	rc = buf_clean(buf);
+	if (BUFT_OK != rc) {
 		DE("Can't clean buffer, stopped operation, returning error\n");
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (rc);
 	}
 
 	TFREE_SIZE(buf, sizeof(buf_t));
@@ -1067,7 +1148,7 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	}
 
 	/*@ignore@*/
-	memcpy(buf->data + buf_used(buf), new_data, size);
+	memcpy(buf->data + buf_get_used(buf), new_data, size);
 	/*@end@*/
 	if (BUFT_OK != buf_inc_used(buf, size)) {
 		DE("Can not increment 'used' of a budder\n");
@@ -1078,14 +1159,14 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	return (BUFT_OK);
 }
 
-buf_s64_t buf_room(/*@temp@*//*@in@*/buf_t *buf)
+buf_s64_t buf_get_room_count(/*@temp@*//*@in@*/buf_t *buf)
 {
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	return (buf->room);
 }
 
-ret_t buf_set_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t room)
+ret_t buf_set_room_count(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t room)
 {
 	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
@@ -1102,7 +1183,7 @@ ret_t buf_set_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t room)
 	return BUFT_OK;
 }
 
-ret_t buf_inc_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
+ret_t buf_inc_room_count(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 {
 	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
@@ -1119,13 +1200,13 @@ ret_t buf_inc_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t inc)
 	return (BUFT_OK);
 }
 
-ret_t buf_dec_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
+ret_t buf_dec_room_count(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 {
 	int rc;
 	/* If buf is invalid we return '-1' costed into uint */
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	if (dec > buf_room(buf)) {
-		DE("Can'r decrement the room: dec > buf->room (%ld > %ld)\n", dec, buf_room(buf));
+	if (dec > buf_get_room_count(buf)) {
+		DE("Can'r decrement the room: dec > buf->room (%ld > %ld)\n", dec, buf_get_room_count(buf));
 		return -BUFT_BAD;
 	}
 
@@ -1176,23 +1257,23 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	/*** Should we really pack it? */
-	if (buf_used(buf) == buf_room(buf)) {
+	if (buf_get_used(buf) == buf_get_room_count(buf)) {
 		/* No need to pack it */
 		return (BUFT_OK);
 	}
 
 	/* Here we shrink the buffer */
-	new_size = buf_used(buf);
+	new_size = buf_get_used(buf);
 	if (BUFT_YES == buf_is_canary(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
 	}
 
-	if (BUFT_OK != buf_realloc(buf, new_size)) {
+	if (BUFT_OK != buf_resize(buf, new_size)) {
 		DE("Can not realloc buf->data\n");
 		return (-BUFT_BAD);
 	}
 
-	if (BUFT_OK != buf_set_room(buf, buf_used(buf))) {
+	if (BUFT_OK != buf_set_room_count(buf, buf_get_used(buf))) {
 		DE("Can not set a new room value to the buffer\n");
 		return (-BUFT_BAD);
 	}
@@ -1219,7 +1300,7 @@ ret_t buf_detect_used(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	/* If the buf is empty - return with error */
-	if (0 == buf_room(buf)) {
+	if (0 == buf_get_room_count(buf)) {
 		DE("Tryed to detect used in empty buffer?\n");
 		TRY_ABORT();
 		return (-ECANCELED);
@@ -1292,7 +1373,7 @@ size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, con
 		return (-ENOMEM);
 	}
 
-	received = recv(socket, buf->data + buf_used(buf), expected, flags);
+	received = recv(socket, buf->data + buf_get_used(buf), expected, flags);
 	if (received > 0) {
 		if (BUFT_OK != buf_inc_used(buf, received)) {
 			DE("Can not increment 'used'");
@@ -1322,23 +1403,45 @@ buf_t *buf_from_file(const char *filename)
 
 	if (0 != fstat(fd, &st)) {
 		DE("Can't stat file %s\n", filename);
-		close(fd);
+		rc = close(fd);
+		if (0 != rc) {
+			DE("Could not close file %s\n", filename);
+			TRY_ABORT();
+		}
+		TRY_ABORT();
 		return (NULL);
 	}
 
 	buf = buf_new(st.st_size);
 	TESTP(buf, NULL);
 
-	rc = read(fd, buf->data, buf->room);
-	if (rc < 0 || (buf_s64_t)rc != buf->room) {
-		DE("Error on file read: asked %lu, read %d\n", buf->room, rc);
-		close(fd);
-		buf_free(buf);
+	rc = read(fd, buf->data, buf_get_room_count(buf));
+	if (rc < 0 || (buf_s64_t)rc != buf_get_room_count(buf)) {
+		DE("Error on file read: asked %lu, read %d\n", buf_get_room_count(buf), rc);
+		rc = close(fd);
+		if (0 != rc) {
+			DE("Could not close file %s\n", filename);
+			TRY_ABORT();
+		}
+
+		rc = buf_free(buf);
+		if (BUFT_OK != rc) {
+			DE("Could not release buf_t\n");
+			TRY_ABORT();
+		}
 		return (NULL);
 	}
 
-	buf->used = rc;
-	close(fd);
+	rc = buf_set_used(buf, rc);
+	if (BUFT_OK != rc) {
+		DE("Could not set new buf->used\n");
+		/*TODO */
+	}
+	rc = close(fd);
+	if (0 != rc) {
+		DE("Could not close file %s\n", filename);
+		TRY_ABORT();
+	}
 	return (buf);
 }
 
@@ -1364,10 +1467,10 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 		return (-BUFT_BAD);
 	}
 
-	rc = write(fd, buf->data, buf->room);
+	rc = write(fd, buf->data, buf_get_room_count(buf));
 
-	if (rc < 0 || (buf_s64_t)rc != buf->room) {
-		DE("Error on file writinf: asked %lu, read %d\n", buf->room, rc);
+	if (rc < 0 || (buf_s64_t)rc != buf_get_room_count(buf)) {
+		DE("Error on file writinf: asked %lu, read %d\n", buf_get_room_count(buf), rc);
 		rc = -BUFT_BAD;
 	} else rc = BUFT_OK;
 
@@ -1377,7 +1480,12 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 		}
 	}
 
-	close(fd);
+	rc = close(fd);
+	if (0 != rc) {
+		DE("Could not close file %s\n", file->data);
+		TRY_ABORT();
+		rc = -BUFT_FILE_CLOSE;
+	}
 	return (rc);
 }
 
