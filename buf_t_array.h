@@ -10,7 +10,7 @@
  * @return buf_s32_t Number of members
  * @details 
  */
-buf_s32_t buf_arr_get_memberss_count(buf_t *buf);
+buf_s32_t buf_arr_get_members_count(buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)

@@ -22,7 +22,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	if (BUFT_OK != buf_type_is_string(buf)) {
 		DE("Buffer is not string type\n");
-		return (-ECANCELED);
+		return (-BUFT_BAD_BUFT_TYPE);
 	}
 
 	/* If the buf is string the room must be greater than used */
@@ -32,7 +32,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 		(buf_get_room_count(buf) <= buf_get_used(buf))) {
 		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_get_used(buf), buf_get_room_count(buf));
 		TRY_ABORT();
-		return (-ECANCELED);
+		return (-BUFT_BAD_USED);
 	}
 
 	/* For string buffers only: check that the string is null terminated */
@@ -59,9 +59,17 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	T_RET_ABORT(buf, NULL);
 
-	if (BUFT_OK != buf_mark_string(buf)) {
+	if (BUFT_OK != buf_set_type(buf, BUF_TYPE_STRING)) {
 		DE("Can't set STRING flag\n");
 		abort();
+	}
+
+	int rc = buf_str_is_valid(buf);
+	if (BUFT_OK != rc) {
+		DE("Buf string is invalid: error %d: %s\n", rc, buf_error_code_to_string(rc));
+		TRY_ABORT();
+		buf_free(buf);
+		return(NULL);
 	}
 	return (buf);
 }
@@ -82,7 +90,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	buf = buf_new(0);
 	TESTP(buf, NULL);
 
-	if (BUFT_OK != buf_set_flag(buf, BUF_T_TYPE_STRING)) {
+	if (BUFT_OK != buf_set_flag(buf, BUF_TYPE_STRING)) {
 		DE("Can't set STRING flag\n");
 		if (BUFT_OK != buf_free(buf)) {
 			DE("Can't release a buffer\n");

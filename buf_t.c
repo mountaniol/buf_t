@@ -79,30 +79,46 @@ ret_t buf_rm_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f)
 	return (BUFT_OK);
 }
 
-/***** Set of functions to add a flag to the buffer */
-
-ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf)
+/* Set flag(s) of the buf */
+ret_t buf_set_type(/*@temp@*//*@in@*/buf_t *buf, buf_t_type_t t)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_TYPE_STRING));
+	buf->type = t;
+	return (BUFT_OK);
 }
 
-ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf)
+/* Clear flag(s) of the buf */
+buf_t_flags_t buf_get_type(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, BUFT_CHAR_ERR);
+	return buf->type;
+}
+
+
+/***** Set of functions to add a flag to the buffer */
+
+ret_t buf_set_type_string(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_TYPE_ARR));
+	return (buf_set_type(buf, BUF_TYPE_STRING));
+}
+
+ret_t buf_set_type_array(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	return (buf_set_type(buf, BUF_TYPE_ARR));
 }
 
 ret_t buf_mark_immutable(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_IMMUTABLE));
+	return (buf_set_flag(buf, BUF_FLAG_IMMUTABLE));
 }
 
 ret_t buf_mark_locked(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_LOCKED));
+	return (buf_set_flag(buf, BUF_FLAG_LOCKED));
 }
 
 ret_t buf_lock(/*@temp@*//*@in@*/buf_t *buf)
@@ -113,25 +129,31 @@ ret_t buf_lock(/*@temp@*//*@in@*/buf_t *buf)
 ret_t buf_mark_compresed(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_COMPRESSED));
+	return (buf_set_flag(buf, BUF_FLAG_COMPRESSED));
 }
 
 ret_t buf_mark_encrypted(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_ENCRYPTED));
+	return (buf_set_flag(buf, BUF_FLAG_ENCRYPTED));
 }
 
 ret_t buf_mark_canary(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_CANARY));
+	return (buf_set_flag(buf, BUF_FLAG_CANARY));
 }
 
 ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_set_flag(buf, BUF_T_FLAG_CRC));
+	return (buf_set_flag(buf, BUF_FLAG_CRC));
+}
+
+ret_t buf_mark_fixed(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	return (buf_set_flag(buf, BUF_FLAG_FIXED_SIZE));
 }
 
 /***   */
@@ -165,22 +187,16 @@ ret_t buf_is_change_allowed(buf_t *buf)
 
 /***** Set of functions to remove a flag from the buffer */
 
-ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf)
-{
-	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_TYPE_STRING));
-}
-
 ret_t buf_unmark_immutable(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_IMMUTABLE));
+	return (buf_rm_flag(buf, BUF_FLAG_IMMUTABLE));
 }
 
 ret_t buf_unmark_locked(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_LOCKED));
+	return (buf_rm_flag(buf, BUF_FLAG_LOCKED));
 }
 
 ret_t buf_unlock(/*@temp@*//*@in@*/buf_t *buf)
@@ -188,29 +204,34 @@ ret_t buf_unlock(/*@temp@*//*@in@*/buf_t *buf)
 	return buf_unmark_locked(buf);
 }
 
-
 ret_t buf_unmark_compressed(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_COMPRESSED));
+	return (buf_rm_flag(buf, BUF_FLAG_COMPRESSED));
 }
 
 ret_t buf_unmark_encrypted(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_ENCRYPTED));
+	return (buf_rm_flag(buf, BUF_FLAG_ENCRYPTED));
 }
 
 ret_t buf_unmark_canary(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_CANARY));
+	return (buf_rm_flag(buf, BUF_FLAG_CANARY));
 }
 
 ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	return (buf_rm_flag(buf, BUF_T_FLAG_CRC));
+	return (buf_rm_flag(buf, BUF_FLAG_CRC));
+}
+
+ret_t buf_unmark_fixed(/*@temp@*//*@in@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+	return (buf_rm_flag(buf, BUF_FLAG_FIXED_SIZE));
 }
 
 /* Set canary word in the end of the buf
@@ -352,37 +373,37 @@ static ret_t buf_has_flag(buf_t *buf, int flag)
 
 ret_t buf_is_immutable(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_IMMUTABLE);
+	return buf_has_flag(buf, BUF_FLAG_IMMUTABLE);
 }
 
 ret_t buf_is_compressed(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_COMPRESSED);
+	return buf_has_flag(buf, BUF_FLAG_COMPRESSED);
 }
 
 ret_t buf_is_encrypted(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_ENCRYPTED);
+	return buf_has_flag(buf, BUF_FLAG_ENCRYPTED);
 }
 
 ret_t buf_is_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_CANARY);
+	return buf_has_flag(buf, BUF_FLAG_CANARY);
 }
 
 ret_t buf_is_crc(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_CRC);
+	return buf_has_flag(buf, BUF_FLAG_CRC);
 }
 
 ret_t buf_is_fixed(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_FIXED_SIZE);
+	return buf_has_flag(buf, BUF_FLAG_FIXED_SIZE);
 }
 
 ret_t buf_is_locked(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 {
-	return buf_has_flag(buf, BUF_T_FLAG_LOCKED);
+	return buf_has_flag(buf, BUF_FLAG_LOCKED);
 }
 
 
@@ -472,10 +493,24 @@ buf_t_canary_t buf_get_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 void buf_print_flags(/*@temp@*//*@in@*/buf_t *buf)
 {
-	if (IS_BUF_TYPE_STRING(buf)) DDD("Buffer is STRING\n");
-	if (IS_BUF_TYPE_BIT(buf)) DDD("Buffer is BIT\n");
-	if (IS_BUF_TYPE_CIRC(buf)) DDD("Buffer is CIRC\n");
-	if (IS_BUF_TYPE_ARR(buf)) DDD("Buffer is ARRAY\n");
+	TESTP_VOID(buf);
+	switch (buf_get_type(buf)) {
+	case BUF_TYPE_STRING:
+		DDD("Buffer is STRING\n");
+		break;
+	case BUF_TYPE_BIT:
+		DDD("Buffer is BIT\n");
+		break;
+	case BUF_TYPE_CIRC:
+		DDD("Buffer is CIRC\n");
+		break;
+	case BUF_TYPE_ARR:
+		DDD("Buffer is ARRAY\n");
+		break;
+	default:
+		DDD("Buffer is unknown type\n");
+		TRY_ABORT();
+	}
 	if (BUFT_YES == buf_is_immutable(buf)) DDD("Buffer is READONLY\n");
 	if (BUFT_YES == buf_is_compressed(buf)) DDD("Buffer is COMPRESSED\n");
 	if (BUFT_YES == buf_is_encrypted(buf)) DDD("Buffer is ENCRYPTED\n");
@@ -548,10 +583,10 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 		return ret;
 	}
 
-	switch (BUF_TYPE(buf)) {
-	case BUF_T_TYPE_STRING:
+	switch (buf_get_type(buf)) {
+	case BUF_TYPE_STRING:
 		return buf_str_is_valid(buf);
-	case BUF_T_TYPE_ARR:
+	case BUF_TYPE_ARR:
 		return buf_array_is_valid(buf);
 	}
 	return (ret);
@@ -562,7 +597,7 @@ ret_t buf_is_valid(/*@temp@*//*@in@*/buf_t *buf)
 int buf_type_is_raw(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	if (IS_BUF_TYPE_RAW(buf)) {
+	if (0 == buf_get_type(buf)) {
 		return (BUFT_YES);
 	}
 	return (BUFT_NO);
@@ -571,7 +606,7 @@ int buf_type_is_raw(/*@temp@*//*@in@*/buf_t *buf)
 int buf_type_is_string(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	if (IS_BUF_TYPE_STRING(buf)) {
+	if (BUF_TYPE_STRING == buf_get_type(buf)) {
 		return (BUFT_YES);
 	}
 	return (BUFT_NO);
@@ -580,7 +615,7 @@ int buf_type_is_string(/*@temp@*//*@in@*/buf_t *buf)
 int buf_type_is_array(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	if (IS_BUF_TYPE_ARR(buf)) {
+	if (BUF_TYPE_ARR == buf_get_type(buf)) {
 		return (BUFT_YES);
 	}
 	return (BUFT_NO);
@@ -589,7 +624,7 @@ int buf_type_is_array(/*@temp@*//*@in@*/buf_t *buf)
 int buf_type_is_bit(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	if (IS_BUF_TYPE_BIT(buf)) {
+	if (BUF_TYPE_STRING == buf_get_type(buf)) {
 		return (BUFT_YES);
 	}
 	return (BUFT_NO);
@@ -598,7 +633,7 @@ int buf_type_is_bit(/*@temp@*//*@in@*/buf_t *buf)
 int buf_type_is_circ(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
-	if (IS_BUF_TYPE_CIRC(buf)) {
+	if (BUF_TYPE_CIRC == buf_get_type(buf)) {
 		return (BUFT_YES);
 	}
 	return (BUFT_NO);
@@ -1066,7 +1101,33 @@ ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return (-BUFT_SET_USED_SIZE);
 	}
 
-	buf->flags = 0;
+	return (BUFT_OK);
+}
+
+ret_t buf_reset(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+/*@releases buf->data@*/
+{
+	int rc = buf_clean(buf);
+	if (BUFT_OK != rc) {
+		DE("Could not clean the buffer\n");
+		TRY_ABORT();
+		return rc;
+	}
+
+	rc = buf_set_flag(buf, 0);
+	if (BUFT_OK != rc) {
+		DE("Could not reset the buffer flags\n");
+		TRY_ABORT();
+		return rc;
+	}
+
+	rc = buf_set_type(buf, BUF_TYPE_RAW);
+	if (BUFT_OK != rc) {
+		DE("Could not reset the buffer flags\n");
+		TRY_ABORT();
+		return rc;
+	}
+
 	return (BUFT_OK);
 }
 
@@ -1077,7 +1138,8 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
 	if (BUFT_OK != buf_is_valid(buf)) {
-		DE("Warning: buffer is invalid\n");
+		DE("Warning: buffer is invalid; the freeing is being to proceed\n");
+		TRY_ABORT();
 	}
 
 	/* If we asked to clean a locked buffer, we return an error.
@@ -1085,6 +1147,7 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 	rc = buf_is_locked(buf);
 	if (BUFT_YES == rc) {
 		DE("Asked to free a locked buffer\n");
+		TRY_ABORT();
 		return (rc);
 	}
 
@@ -1096,6 +1159,7 @@ ret_t buf_free(/*@only@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	TFREE_SIZE(buf, sizeof(buf_t));
+
 	/* The buffer is released. Write down statistics. */
 	buf_release_num_inc();
 	return (BUFT_OK);
@@ -1131,10 +1195,10 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	}
 
 	/* Here we switch to a type-specific function */
-	switch (BUF_TYPE(buf)) {
-	case BUF_T_TYPE_STRING:
+	switch (buf_get_type(buf)) {
+	case BUF_TYPE_STRING:
 		return buf_str_add(buf, new_data, size);
-	case BUF_T_TYPE_ARR:
+	case BUF_TYPE_ARR:
 		return buf_arr_add_memory(buf, new_data, size);
 	}
 
@@ -1238,8 +1302,8 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return rc;
 	}
 
-	switch (BUF_TYPE(buf)) {
-	case BUF_T_TYPE_STRING:
+	switch (buf_get_type(buf)) {
+	case BUF_TYPE_STRING:
 		return buf_str_pack(buf);
 	}
 
@@ -1306,11 +1370,11 @@ ret_t buf_detect_used(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	switch (BUF_TYPE(buf)) {
-	case BUF_T_TYPE_STRING:
+	switch (buf_get_type(buf)) {
+	case BUF_TYPE_STRING:
 		return buf_str_detect_used(buf);
 	default:
-		DE("Not supported buf type %d\n", BUF_TYPE(buf));
+		DE("Not supported buf type %d\n", buf_get_type(buf));
 	}
 
 	/* We should not get here */
@@ -1385,7 +1449,7 @@ size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, con
 	return (received);
 }
 
-buf_t *buf_from_file(const char *filename)
+buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 {
 	int         fd;
 	buf_t       *buf;
@@ -1414,6 +1478,17 @@ buf_t *buf_from_file(const char *filename)
 
 	buf = buf_new(st.st_size);
 	TESTP(buf, NULL);
+
+	/* If the buf_type is not 0, set buffer type */
+	if (0 != buf_type) {
+		rc = buf_set_flag(buf, buf_type);
+		if (BUFT_OK != rc) {
+			DE("Could not set type\n");
+			TRY_ABORT();
+			buf_free(buf);
+			return (NULL);
+		}
+	}
 
 	rc = read(fd, buf->data, buf_get_room_count(buf));
 	if (rc < 0 || (buf_s64_t)rc != buf_get_room_count(buf)) {
@@ -1489,3 +1564,5 @@ int buf_to_file(buf_t *buf, buf_t *file, mode_t mode)
 	return (rc);
 }
 
+
+//buf_t *buf_transform(buf_t *buf, )

@@ -15,7 +15,7 @@ DEBUG=-DDEBUG3
 
 # client daemon
 
-BUF_O=buf_t_array.o buf_t.o buf_t_string.o buf_t_memory.o buf_t_stats.o
+BUF_O=buf_t_errors.o buf_t_array.o buf_t.o buf_t_string.o buf_t_memory.o buf_t_stats.o
 BUF_A=buf_t.a
 BUF_TEST=btest.out
 BUF_FUZZER=bfuzzer.out

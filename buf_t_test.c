@@ -856,9 +856,9 @@ void test_buf_array_allocate_with_size(int test_num, int element_size, int num_o
 		abort();
 	}
 
-	if (buf_arr_get_memberss_count(buf) != 0) {
+	if (buf_arr_get_members_count(buf) != 0) {
 		printf("Arr size buffer: buf->arr.members (%d) != 0 as expected\n",
-			   buf_arr_get_memberss_count(buf));
+			   buf_arr_get_members_count(buf));
 		PFAIL("Array buffer: buf->arr.members != 0", test_num);
 		abort();
 	}
@@ -921,9 +921,9 @@ void test_buf_array_allocate_add(int test_num, int num_of_elements)
 
 	PSTEP("buf->data != NULL");
 
-	if (buf_arr_get_memberss_count(buf) != num_of_elements) {
+	if (buf_arr_get_members_count(buf) != num_of_elements) {
 		printf("Array size buffer: number of members is (%d), expected (%d)\n",
-			   buf_arr_get_memberss_count(buf), num_of_elements);
+			   buf_arr_get_members_count(buf), num_of_elements);
 		PFAIL("Array buffer, wrong number of elements", test_num);
 		abort();
 	}
@@ -970,9 +970,9 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 
 	PSTEP("buf->data != NULL");
 
-	if (buf_arr_get_memberss_count(buf) != num_of_elements) {
+	if (buf_arr_get_members_count(buf) != num_of_elements) {
 		printf("Array size buffer: number of members is (%d), expected (%d)\n",
-			   buf_arr_get_memberss_count(buf), num_of_elements);
+			   buf_arr_get_members_count(buf), num_of_elements);
 		PFAIL("Array buffer, wrong number of elements", test_num);
 		abort();
 	}
@@ -989,9 +989,9 @@ void test_buf_array_allocate_add_remove(int test_num, int num_of_elements)
 		}
 
 		/* Number of elements must be decreased by counter */
-		if (buf_arr_get_memberss_count(buf) != num_of_elements - counter - 1) {
+		if (buf_arr_get_members_count(buf) != num_of_elements - counter - 1) {
 			printf("After removing %d element count of elements expected %d but it is %d\n",
-				   counter + 1, num_of_elements - counter - 1, buf_arr_get_memberss_count(buf));
+				   counter + 1, num_of_elements - counter - 1, buf_arr_get_members_count(buf));
 			PFAIL("Array buffer, removing member", test_num);
 		}
 	}

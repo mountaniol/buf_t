@@ -5,8 +5,13 @@
 
 typedef uint32_t ret_t;
 
+/* Whidth of the buf type */
+typedef uint8_t buf_t_type_t;
+
 /* Whidth of the flags field */
-typedef uint16_t buf_t_flags_t;
+typedef uint8_t buf_t_flags_t;
+
+#define BUFT_CHAR_ERR (0xFF)
 
 /* Size of 'room' and 'used':
  * 1. If this type is "uint64", the max size of data buffer is:
@@ -43,33 +48,27 @@ typedef int32_t buf_s32_t;
 typedef uint32_t buf_circ_usize_t;
 
 
-/* buf_t flags */
-
-/* How many bits are reserved for buffer type */
-#define BUF_T_TYPE_WIDTH 8
-
-/* We use mask to isolate type from other flags */
-#define BUF_T_TYPE_MASK  0xFF
-
-
 /* * Types **
  ************
  ************/
 
 /* This is just a regular buffer, keeping user's raw data.
    User knows what to do with it, we don't care */
-#define BUF_T_TYPE_RAW        	0
+#define BUF_TYPE_RAW        	0
 
 /* String buffer. In this case, additional tests enabled */
-#define BUF_T_TYPE_STRING        ((buf_t_flags_t)1)
+#define BUF_TYPE_STRING        (1)
 
 /* Bit buffer */
-#define BUF_T_TYPE_BIT      		2
+#define BUF_TYPE_BIT      		(2)
 
 /* Array of elements */
-#define BUF_T_TYPE_ARR      		3
+#define BUF_TYPE_ARR      		(3)
 
-#define BUF_T_TYPE_CIRC			4
+#define BUF_TYPE_CIRC			(4)
+
+
+/* Circular Buffer properties */
 #define BUF_T_CIRC_HEAD_WIDTH (32)
 #define BUF_T_CIRC_MASK (0x0000FFFF)
 
@@ -80,27 +79,27 @@ typedef uint32_t buf_circ_usize_t;
 	The constant buffer can not have canary.
 	It is a special case of buffer.
 	Probably, it should be a type, not a flag */
-#define BUF_T_FLAG_IMMUTABLE     (1 << BUF_T_TYPE_WIDTH)
+#define BUF_FLAG_IMMUTABLE     (1 << 0)
 
 /* Buffer is compressed */
-#define BUF_T_FLAG_COMPRESSED (1 << (BUF_T_TYPE_WIDTH + 1))
+#define BUF_FLAG_COMPRESSED (1 << 1)
 
 /* Buffer is enctypted */
-#define BUF_T_FLAG_ENCRYPTED  (1 << (BUF_T_TYPE_WIDTH + 2))
+#define BUF_FLAG_ENCRYPTED  (1 << 2)
 
 /* Buffer is enctypted */
-#define BUF_T_FLAG_CANARY  (1 << (BUF_T_TYPE_WIDTH + 3))
+#define BUF_FLAG_CANARY  (1 << 3)
 
 /* Buffer is crc32 protected */
-#define BUF_T_FLAG_CRC  (1 << (BUF_T_TYPE_WIDTH + 4))
+#define BUF_FLAG_CRC  (1 << 4)
 
 /* Buffer can not change its size:
    we might need it for implmenet a circular buffer ot top of buf ARRAY */
-#define BUF_T_FLAG_FIXED_SIZE  (1 << (BUF_T_TYPE_WIDTH + 5))
+#define BUF_FLAG_FIXED_SIZE  (1 << 5)
 
 /* Buffer is locked, not data manipulation is allowed.
    The buffer can be any type, and it can be locked and ulocked dynamically */
-#define BUF_T_FLAG_LOCKED  (1 << (BUF_T_TYPE_WIDTH + 6))
+#define BUF_FLAG_LOCKED  (1 << 6)
 
 /* Size of canary */
 //typedef uint32_t buf_t_canary_t;

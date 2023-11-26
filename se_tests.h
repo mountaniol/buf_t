@@ -25,6 +25,8 @@
 /* Shorter form of the tester: print message "Pointer x is NULL", x replaced with argument x name */
 #define TESTP(x, ret) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return ret; }} while(0)
 
+#define TESTP_VOID(x) do {if(NULL == x) { DDE("Pointer %s is NULL\n", #x); return; }} while(0)
+
 /* Test if x == 0 . If x != 0, print "mes" and return "ret" */
 #define TESTI_MES(x, ret, mes) do {if(0 != x) { DE("%s\n", mes); return ret; } } while(0)
 

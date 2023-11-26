@@ -48,6 +48,7 @@ struct buf_t_struct {
 		head_tail_t ht;             /* For cirrcular buffer: head and tail of the circular buffer */
 		arr_used_t arr;				/* For array: how many members in arr and a member size */
 	};
+	buf_t_type_t type;        /* Buffer type. Optional. We may use it as we wish. */
 	buf_t_flags_t flags;        /* Buffer flags. Optional. We may use it as we wish. */
 	/*@only@*/ char *data;       /* Pointer to data */
 };

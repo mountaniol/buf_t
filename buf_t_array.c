@@ -25,7 +25,7 @@ static buf_s32_t _buf_arr_members(buf_t *buf)
 }
 
 /* Get number of members in buf_t */
-buf_s32_t buf_arr_get_memberss_count(buf_t *buf)
+buf_s32_t buf_arr_get_members_count(buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
@@ -114,7 +114,7 @@ buf_s64_t buf_arr_get_used(buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	ret_members = buf_arr_get_memberss_count(buf);
+	ret_members = buf_arr_get_members_count(buf);
 	if (ret_members < 0) {
 		DE("Could not take number of membrs in array\n");
 		TRY_ABORT();
@@ -197,7 +197,7 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	/* TEST: ->data is not NULL, than neither arr.amount not arr.size could be < 0 */
 	if (BUFT_NO == buf_data_is_null(buf)) {
-		if (buf_arr_get_memberss_count(buf) < 0) {
+		if (buf_arr_get_members_count(buf) < 0) {
 			DE("Value of 'members' < 0");
 			TRY_ABORT();
 			return (-ECANCELED);
@@ -245,7 +245,7 @@ ret_t buf_array_set_used(/*@in@*//*@temp@*/buf_t *buf, buf_s64_t used)
 
 	T_RET_ABORT(buf, NULL);
 
-	if (BUFT_OK != buf_mark_array(buf)) {
+	if (BUFT_OK != buf_set_type_array(buf)) {
 		DE("Can't set ARRAY flag\n");
 		abort();
 	}

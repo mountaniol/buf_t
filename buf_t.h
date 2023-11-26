@@ -53,31 +53,6 @@ extern int bug_get_abort_flag(void);
 #define TESTP_BUF_DATA(_Buf) do {T_RET_ABORT(_Buf, -BUFT_NULL_POINTER); T_RET_ABORT(_Buf->data, -BUFT_NULL_DATA); } while(0)
 //#define T_RET_ABORT(x, ret) do {if(NULL == x) {DE("[[ ASSERT! ]] %s == NULL\n", #x);abort(); }} while(0)
 
-/*@access buf_t@*/
-
-/* Types test */
-#define BUF_TYPE(buf) (buf->flags & BUF_T_TYPE_MASK)
-#define IS_BUF_TYPE_RAW(buf) ( BUF_TYPE(buf) == 0 )
-#define IS_BUF_TYPE_STRING(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_STRING )
-#define IS_BUF_TYPE_BIT(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_BIT )
-#define IS_BUF_TYPE_CIRC(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_CIRC )
-#define IS_BUF_TYPE_ARR(buf) ( BUF_TYPE(buf) == BUF_T_TYPE_ARR )
-
-/* Flags test */
-#define IS_BUF_IMMUTABLE(buf) (buf->flags & BUF_T_FLAG_IMMUTABLE)
-#define IS_BUF_COMPRESSED(buf) (buf->flags & BUF_T_FLAG_COMPRESSED)
-#define IS_BUF_ENCRYPTED(buf) (buf->flags & BUF_T_FLAG_ENCRYPTED)
-#define IS_BUF_CANARY(buf) (buf->flags & BUF_T_FLAG_CANARY)
-#define IS_BUF_CRC(buf) (buf->flags & BUF_T_FLAG_CRC)
-#define IS_BUF_LOCKED(buf) (buf->flags & BUF_T_FLAG_LOCKED)
-
-/* Type set */
-#define SET_BUF_TYPE_STRING(buf) (buf->flags |= BUF_T_TYPE_STRING)
-#define SET_BUF_TYPE_IMMUTABLE(buf) (buf->flags |= BUF_T_FLAG_IMMUTABLE)
-#define SET_BUF_TYPE_COMPRESSED(buf) (buf->flags |= BUF_T_FLAG_COMPRESSED)
-#define SET_BUF_TYPE_ENCRYPTED(buf) (buf->flags |= BUF_T_FLAG_ENCRYPTED)
-/*@noaccess buf_t@*/
-
 /* CANARY: Set a mark after allocated buffer*/
 /* PRO and CONTRA of this method:*/
 /* PRO: It can help to catch memory problems */
@@ -115,8 +90,7 @@ extern int bug_get_abort_flag(void);
 #define MIN_OF(type) \
     (((type)(1LLU<<((sizeof(type)<<3)-1)) < (type)1) ? (long long int)((~0LLU)-((1LLU<<((sizeof(type)<<3)-1))-1LLU)) : 0LL)
 
-
-/**
+/*
  * @author Sebastian Mountaniol (11/20/23)
  * @brief This function returns abort flag. If abort flag is set
  *  	  to ON, the execution will stopped in a function where
@@ -263,16 +237,28 @@ extern /*@null@*//*@only@*/void *buf_steal_data(/*@temp@*/ /*@in@*//*@special@*/
 extern /*@null@*/void *buf_to_data(/*@only@*//*@in@*//*@special@*/buf_t *buf);
 
 /**
- * @brief Remove internal buffer, set all counters to 0,
- *  	  clean all flags
+ * @brief Remove data from buffer (and free the data),
+ *  	  set buf->room = buf->len = 0, remove all flags
+ * @author se (25/11/2023)
+ * @param buf Buffer to remove data from
+ * @return err_t EOK if all right
+ * 	EINVAL if buf is NULL pointer
+ * 	EACCESS if the buffer is read-only, buffer kept untouched
+ * @details If the buffer is invalid (see buf_is_valid()),
+ * @details the opreration won't be interrupted and buffer will be cleaned.
+ */
+extern ret_t buf_reset(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+
+/**
+ * @brief Remove data from buffer (and free the data),
+ *  	  clean counters buf keep flags
  * @author se (16/05/2020)
- * @param buf Buffer to clean
- * @return err_t BUFT_OK if all right; a negative error code on
- *  	   a problem
- * @details (1) If the buffer is invalid (see buf_is_valid()),
- * the opreration won't be interrupted and buffer will be
- * cleaned. (2) It won't clean the locked buffer. (3) It WILL
- * clean immutable buffer
+ * @param buf Buffer to remove data from
+ * @return err_t EOK if all right
+ * 	EINVAL if buf is NULL pointer
+ * 	EACCESS if the buffer is read-only, buffer kept untouched
+ * @details If the buffer is invalid (see buf_is_valid()),
+ * @details the opreration won't be interrupted and buffer will be cleaned.
  */
 extern ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
 
@@ -558,7 +544,7 @@ extern void buf_restore_flags(buf_t_flags_t flags);
  * @param buf_t * buf Buffer to mark
  * @return err_t BUFT_OK on success, -EINVAL if buf is NULL
  */
-extern ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf);
+extern ret_t buf_set_type_string(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (11/7/23)
@@ -567,7 +553,7 @@ extern ret_t buf_mark_string(/*@temp@*//*@in@*/buf_t *buf);
  * @param buf_t * buf Buffer to mark as array
  * @return err_t BUFT_OK on success, -EINVAL if buf is NULL
  */
-extern ret_t buf_mark_array(/*@temp@*//*@in@*/buf_t *buf);
+extern ret_t buf_set_type_array(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (12/17/21)
@@ -595,6 +581,29 @@ extern ret_t buf_set_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
  * @details 
  */
 extern ret_t buf_rm_flag(/*@temp@*//*@in@*/buf_t *buf, buf_t_flags_t f);
+
+/**
+ * @author Sebastian Mountaniol (11/26/23)
+ * @brief Set type of buffer
+ * @param buf_t* buf   Buffer to set type
+ * @param buf_t_type_t t     Buffer type
+ * @return ret_t BUFT_OK on success. A negative error code on
+ *  	   failure.
+ * @details 
+ */
+extern ret_t buf_set_type(/*@temp@*//*@in@*/buf_t *buf, buf_t_type_t t);
+
+/**
+ * @author Sebastian Mountaniol (11/26/23)
+ * @brief Get type of the buffer
+ * @param buf_t* buf   Buffer to read type from
+ * @return buf_t_flags_t Type of the biffer; WARNING:
+ *  	   On an error it returns BUFT_CHAR_ERR! Test it for
+ *  	   this error.
+ * @details 
+ */
+extern buf_t_flags_t buf_get_type(/*@temp@*//*@in@*/buf_t *buf);
+
 /**
  * @author Sebastian Mountaniol (18/06/2020)
  * @func err_t buf_mark_ro(buf_t *buf)
@@ -641,6 +650,15 @@ extern ret_t buf_mark_canary(/*@temp@*//*@in@*/buf_t *buf);
 extern ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @brief Mark (set flag) that the buf is fixed size
+ * @param buf_t * buf Buffer to mark
+ * @return err_t BUFT_OK on success, a negative error code on
+ *  	   abort
+ */
+extern ret_t buf_mark_fixed(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
  * @author Sebastian Mountaniol (11/20/23)
  * @brief Test whether the buffer can not be changed or not. The
  *  	  buffer can not be changed if it IMMUTABLE or LOCKED
@@ -651,15 +669,6 @@ extern ret_t buf_mark_crc(/*@temp@*//*@in@*/buf_t *buf);
  * @details 
  */
 extern ret_t buf_is_change_allowed(buf_t *buf);
-
-/**
- * @author Sebastian Mountaniol (18/06/2020)
- * @func err_t buf_unmark_string(buf_t *buf)
- * @brief Remove "string" mark (unset flag) from the buf
- * @param buf_t * buf Buffer to unmark
- * @return err_t BUFT_OK on success, EINVAL if buf is NULL
- */
-extern ret_t buf_unmark_string(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -742,6 +751,15 @@ extern ret_t buf_unmark_canary(/*@temp@*//*@in@*/buf_t *buf);
  * @return err_t BUFT_OK on success, EINVAL if buf is NULL
  */
 extern ret_t buf_unmark_crc(/*@temp@*//*@in@*/buf_t *buf);
+
+/**
+ * @author Sebastian Mountaniol (18/06/2020)
+ * @brief Remove "fixed_size" mark (unset flag) from the buf
+ * @param buf_t * buf Buffer to unmark
+ * @return err_t BUFT_OK on success, a negative error code on
+ *  	   failure
+ */
+extern ret_t buf_unmark_fixed(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @author Sebastian Mountaniol (18/06/2020)
@@ -890,11 +908,12 @@ extern size_t buf_recv(/*@temp@*/ /*@in@*/ /*@special@*/buf_t *buf, const int so
  * @brief Load content of the file into buf_t
  * @param const char* filename Full name of file to load into
  *  			buf_t
+ * @param buf_t_flags_t buf_type _type of buffer to create
  * @return buf_t* Buffer containin the contentof the file
  * @details The type of buf_t is not set. The user should decide
  *  		either they want to set it or not.
  */
-extern buf_t *buf_from_file(const char *filename);
+extern buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type);
 
 /**
  * @author Sebastian Mountaniol (11/18/23)
