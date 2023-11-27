@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "buf_t.h"
-#include "buf_t_string.h"
+// #include "buf_t_string.h"
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 

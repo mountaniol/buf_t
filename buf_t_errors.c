@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "buf_t.h"
-#include "buf_t_types.h"
-#include "buf_t_errors.h"
+//#include "buf_t_types.h"
+//#include "buf_t_errors.h"
 
 #if 0 /* SEB */ 
  *typedef enum {

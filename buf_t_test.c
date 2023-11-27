@@ -5,8 +5,8 @@
 #include <stdarg.h>
 
 #include "buf_t.h"
-#include "buf_t_string.h"
-#include "buf_t_array.h"
+// #include "buf_t_string.h"
+// #include "buf_t_array.h"
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 
@@ -61,96 +61,75 @@ void free_buf(buf_t *buf, const int test_num, const char *from_func, const int l
 
 
 /**** Function tests ****/
+#if 0 /* SEB */
 
-void test_func_(int test_num)
-{
-}
-
-void test_func_buf_get_data_ptr(int test_num)
-{
+void test_func_(int test_num){
 }
 
-void test_func_buf_data_is_null(int test_num)
-{
+void test_func_buf_get_data_ptr(int test_num){
 }
 
-void test_func_buf_is_valid(int test_num)
-{
+void test_func_buf_data_is_null(int test_num){
 }
 
-void test_func_buf_to_data(int test_num)
-{
+void test_func_buf_is_valid(int test_num){
 }
 
-void test_func_buf_clean(int test_num)
-{
-}
-void test_func_buf_add_room(int test_num)
-{
-}
-void test_func_buf_test_room(int test_num)
-{
+void test_func_buf_to_data(int test_num){
 }
 
-void test_func_buf_set_used(int test_num)
-{
+void test_func_buf_clean(int test_num){
+}
+void test_func_buf_add_room(int test_num){
+}
+void test_func_buf_test_room(int test_num){
 }
 
-void test_func_buf_inc_used(int test_num)
-{
+void test_func_buf_set_used(int test_num){
 }
 
-void test_func_buf_dec_used(int test_num)
-{
+void test_func_buf_inc_used(int test_num){
 }
 
-void test_func_buf_room(int test_num)
-{
+void test_func_buf_dec_used(int test_num){
 }
 
-void test_func_buf_set_room(int test_num)
-{
+void test_func_buf_room(int test_num){
 }
 
-void test_func_buf_inc_room(int test_num)
-{
+void test_func_buf_set_room(int test_num){
 }
 
-void test_func_buf_dec_room(int test_num)
-{
+void test_func_buf_inc_room(int test_num){
 }
 
-void test_func_buf_pack(int test_num)
-{
+void test_func_buf_dec_room(int test_num){
 }
 
-void test_func_buf_is_change_allowed(int test_num)
-{
+void test_func_buf_pack(int test_num){
 }
 
-void test_func_buf_lock(int test_num)
-{
+void test_func_buf_is_change_allowed(int test_num){
 }
 
-void test_func_buf_set_canary(int test_num)
-{
+void test_func_buf_lock(int test_num){
 }
 
-void test_func_buf_force_canary(int test_num)
-{
+void test_func_buf_set_canary(int test_num){
 }
 
-void test_func_buf_test_canary(int test_num)
-{
+void test_func_buf_force_canary(int test_num){
 }
 
-void test_func_buf_get_canary(int test_num)
-{
+void test_func_buf_test_canary(int test_num){
 }
 
-void test_func_buf_detect_used(int test_num)
-{
+void test_func_buf_get_canary(int test_num){
 }
+
+void test_func_buf_detect_used(int test_num){
+}
+#endif
 
 #if 0 /* SEB */
 void test_func_(int test_num){

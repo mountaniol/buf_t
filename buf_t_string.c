@@ -90,7 +90,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	buf = buf_new(0);
 	TESTP(buf, NULL);
 
-	if (BUFT_OK != buf_set_flag(buf, BUF_TYPE_STRING)) {
+	if (BUFT_OK != buf_set_type(buf, BUF_TYPE_STRING)) {
 		DE("Can't set STRING flag\n");
 		if (BUFT_OK != buf_free(buf)) {
 			DE("Can't release a buffer\n");

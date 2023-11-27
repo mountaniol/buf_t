@@ -13,13 +13,13 @@
 #include <linux/errno.h>
 
 #include "buf_t.h"
-#include "buf_t_string.h"
-#include "buf_t_array.h"
+// #include "buf_t_string.h"
+// #include "buf_t_array.h"
 
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
-#include "buf_t_errors.h"
+//#include "buf_t_errors.h"
 #include "se_tests.h"
 
 /* Abort on error */
@@ -1476,12 +1476,13 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 		return (NULL);
 	}
 
-	buf = buf_new(st.st_size);
+	//buf = buf_new(st.st_size + 1);
+	buf = buf_new(0);
 	TESTP(buf, NULL);
 
 	/* If the buf_type is not 0, set buffer type */
 	if (0 != buf_type) {
-		rc = buf_set_flag(buf, buf_type);
+		rc = buf_set_type(buf, buf_type);
 		if (BUFT_OK != rc) {
 			DE("Could not set type\n");
 			TRY_ABORT();
@@ -1490,28 +1491,32 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 		}
 	}
 
-	rc = read(fd, buf->data, buf_get_room_count(buf));
-	if (rc < 0 || (buf_s64_t)rc != buf_get_room_count(buf)) {
-		DE("Error on file read: asked %lu, read %d\n", buf_get_room_count(buf), rc);
-		rc = close(fd);
-		if (0 != rc) {
-			DE("Could not close file %s\n", filename);
-			TRY_ABORT();
+	#define TMP_BUF_SIZE (1024)
+	int *tmp = malloc(TMP_BUF_SIZE);
+
+	do {
+		rc = read(fd, tmp, TMP_BUF_SIZE);
+		if (rc < 0) {
+			DE("Error on file read: asked %lu, read %d\n", buf_get_room_count(buf), rc);
+			rc = close(fd);
+			if (0 != rc) {
+				DE("Could not close file %s\n", filename);
+				TRY_ABORT();
+			}
+
+			rc = buf_free(buf);
+			if (BUFT_OK != rc) {
+				DE("Could not release buf_t\n");
+				TRY_ABORT();
+			}
+			return (NULL);
 		}
 
-		rc = buf_free(buf);
-		if (BUFT_OK != rc) {
-			DE("Could not release buf_t\n");
-			TRY_ABORT();
-		}
-		return (NULL);
-	}
+		buf_add(buf, tmp, rc);
+	} while (TMP_BUF_SIZE == rc);
 
-	rc = buf_set_used(buf, rc);
-	if (BUFT_OK != rc) {
-		DE("Could not set new buf->used\n");
-		/*TODO */
-	}
+	free(tmp);
+
 	rc = close(fd);
 	if (0 != rc) {
 		DE("Could not close file %s\n", filename);

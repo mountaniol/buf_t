@@ -8,8 +8,8 @@
 #include <stddef.h>
 
 #include "buf_t.h"
-#include "buf_t_types.h"
-#include "buf_t_structs.h"
+//#include "buf_t_types.h"
+//#include "buf_t_structs.h"
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
