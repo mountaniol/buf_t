@@ -13,14 +13,12 @@
 #include <linux/errno.h>
 
 #include "buf_t.h"
-// #include "buf_t_string.h"
-// #include "buf_t_array.h"
-
 #include "buf_t_stats.h"
 #include "buf_t_debug.h"
 #include "buf_t_memory.h"
-//#include "buf_t_errors.h"
 #include "se_tests.h"
+
+#define TMP_BUF_SIZE (1024)
 
 /* Abort on error */
 static buf_t_flags_t g_abort_on_err = ABORT_ON_ERROR_OFF;
@@ -1491,7 +1489,6 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 		}
 	}
 
-	#define TMP_BUF_SIZE (1024)
 	int *tmp = malloc(TMP_BUF_SIZE);
 
 	do {
