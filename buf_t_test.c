@@ -153,8 +153,8 @@ void test_buf_new_zero_size(int test_num)
 
 	PSTEP("Buffer allocated with 0 room size");
 
-	if (buf_get_used(buf) != 0 || buf_get_room_count(buf) != 0) {
-		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_get_used(buf), buf_get_room_count(buf));
+	if (buf_get_used_count(buf) != 0 || buf_get_room_count(buf) != 0) {
+		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_get_used_count(buf), buf_get_room_count(buf));
 		PFAIL("0 size buffer", test_num);
 		abort();
 	}
@@ -189,9 +189,9 @@ void test_buf_new_increasing_size(int test_num)
 
 		buf = allocate_buf(size, test_num, __func__, __LINE__);
 
-		if ((uint64_t)buf_get_used(buf) != 0 || (uint64_t)buf_get_room_count(buf) != size) {
+		if ((uint64_t)buf_get_used_count(buf) != 0 || (uint64_t)buf_get_room_count(buf) != size) {
 			/*@ignore@*/
-			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_get_used(buf), buf_get_room_count(buf), size);
+			printf("increasing size buffer: used (%ld) !=0 or room (%ld) != %zu\n", buf_get_used_count(buf), buf_get_room_count(buf), size);
 			/*@end@*/
 			PFAIL("increasing size buffer", test_num);
 			abort();
@@ -282,11 +282,11 @@ void test_buf_string(size_t buffer_init_size, int test_num)
 		abort();
 	}
 
-	if (buf_get_used(buf) != (buf_s64_t)strlen(str) + (buf_s64_t)strlen(str2)) {
+	if (buf_get_used_count(buf) != (buf_s64_t)strlen(str) + (buf_s64_t)strlen(str2)) {
 		/*@ignore@*/
 		printf("After buf_add: wrong buf->used\n");
 		printf("Expected: buf->used = %zu\n", strlen(str) + strlen(str2));
-		printf("Current : buf->used = %ld\n", buf_get_used(buf));
+		printf("Current : buf->used = %ld\n", buf_get_used_count(buf));
 		printf("str = |%s| len = %zu\n", str, strlen(str));
 		printf("str2 = |%s| len = %zu\n", str2, strlen(str2));
 		/*@end@*/
@@ -364,7 +364,7 @@ void test_buf_pack_string(int test_num)
 		abort();
 	}
 
-	if (buf_get_used(buf) != (len + len2)) {
+	if (buf_get_used_count(buf) != (len + len2)) {
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
@@ -382,26 +382,25 @@ void test_buf_pack_string(int test_num)
 	}
 
 	/* Test that the packed buffer has the right size */
-	if (buf_get_used(buf) != (len + len2)) {
-		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_get_used(buf), (len + len2));
+	if (buf_get_used_count(buf) != (len + len2)) {
+		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_get_used_count(buf), (len + len2));
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf_get_used(buf) != buf_get_room_count(buf) - 1) {
-		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_get_used(buf), buf_get_room_count(buf));
+	if (buf_get_used_count(buf) != buf_get_room_count(buf) - 1) {
+		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_get_used_count(buf), buf_get_room_count(buf));
 		PFAIL("buf_pack_string", test_num);
 		abort();
 	}
 
-	con_str = malloc(len + len2 + 1);
+	con_str = calloc(len + len2 + 1, 1);
 	if (NULL == con_str) {
 		printf("Error: can't allocate memory\n");
 		abort();
 	}
 
-	memset(con_str, 0, len + len2 + 1);
 	rc = snprintf(con_str, len + len2 + 1, "%s%s", str, str2);
 	if (rc != len + len2) {
 		PFAIL("snprintf failed (this is very strange!)", test_num);
@@ -493,8 +492,8 @@ void test_buf_str_concat(int test_num)
 	PSTEP("string length match 1");
 
 	/* Test that the packed buffer has the right size */
-	if (buf_get_used(buf1) != (len1 + len2)) {
-		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_get_used(buf1), (len1 + len2));
+	if (buf_get_used_count(buf1) != (len1 + len2)) {
+		DE("buf_used(buf) [%lu] != len + len2 [%lu]\n", buf_get_used_count(buf1), (len1 + len2));
 		PFAIL("buf_str_concat: wrong buf_used()", test_num);
 		abort();
 	}
@@ -502,8 +501,8 @@ void test_buf_str_concat(int test_num)
 	PSTEP("string length match 2");
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf_get_used(buf1) != buf_get_room_count(buf1) - 1) {
-		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_get_used(buf1), buf_get_room_count(buf1));
+	if (buf_get_used_count(buf1) != buf_get_room_count(buf1) - 1) {
+		DE("buf used [%lu] != buf_room + 1 [%lu]\n", buf_get_used_count(buf1), buf_get_room_count(buf1));
 		PFAIL("buf_str_concat: buf_used(buf1) != buf_room(buf1) - 1", test_num);
 		abort();
 	}
@@ -555,16 +554,13 @@ void test_buf_pack(int test_num)
 
 	PSTEP("Allocated buffer");
 
-	_buf_data = malloc(256);
+	_buf_data = calloc(256,1 );
 	if (NULL == _buf_data) {
-		PFAIL("Can't allocate buffer", test_num);
+		PFAIL("Can't allocate a buffer", test_num);
 		abort();
 	}
 
 	PSTEP("Allocated local buffer for random data");
-
-	memset(_buf_data, 0, 256);
-
 	for (i = 0; i < buf_data_size; i++) {
 		char randomNumber = (char)random();
 		_buf_data[i] = randomNumber;
@@ -583,7 +579,7 @@ void test_buf_pack(int test_num)
 
 	PSTEP("Added buffer into buf_t");
 
-	if (buf_get_used(buf) != buf_data_size) {
+	if (buf_get_used_count(buf) != buf_data_size) {
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
@@ -606,15 +602,15 @@ void test_buf_pack(int test_num)
 	PSTEP("Packed buf_t");
 
 	/* Test that the packed buffer has the right size */
-	if (buf_get_used(buf) != buf_data_size) {
+	if (buf_get_used_count(buf) != buf_data_size) {
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
 	PSTEP("That buf->used is right");
 
 	/* Test that buf->room = buf->used + 1 */
-	if (buf_get_used(buf) != buf_get_room_count(buf)) {
-		printf("buf->room (%ld) != buf->used (%ld)\n", buf_get_room_count(buf), buf_get_used(buf));
+	if (buf_get_used_count(buf) != buf_get_room_count(buf)) {
+		printf("buf->room (%ld) != buf->used (%ld)\n", buf_get_room_count(buf), buf_get_used_count(buf));
 		PFAIL("buf_pack", test_num);
 		abort();
 	}
@@ -650,20 +646,18 @@ void test_buf_canary(int test_num)
 
 	if (BUFT_OK != buf_mark_canary(buf)) {
 		free_buf(buf, test_num, __func__, __LINE__);
-		PFAIL("buf_canary: Can't set CANARY flag", test_num);
+		PFAIL("buf_canary: Can't set the CANARY flag", test_num);
 		abort();
 	}
 
 	PSTEP("Allocated buffer");
 
-	_buf_data = malloc(256);
+	_buf_data = calloc(256, 1);
 	if (NULL == _buf_data) {
-		PFAIL("Can't allocate buffer", test_num);
+		PFAIL("Can't allocate a buffer", test_num);
 		free_buf(buf, test_num, __func__, __LINE__);
 		abort();
 	}
-
-	memset(_buf_data, 0, 256);
 
 	PSTEP("Allocated local buffer for random data");
 
@@ -682,7 +676,7 @@ void test_buf_canary(int test_num)
 
 	PSTEP("Added buffer into buf_t");
 
-	if (buf_get_used(buf) != buf_data_size - 1) {
+	if (buf_get_used_count(buf) != buf_data_size - 1) {
 		PFAIL("buf_pack", test_num);
 		if (BUFT_OK != buf_free(buf)) {
 			PRINT("Can't release buffer");
@@ -783,8 +777,8 @@ void test_buf_array_zero_size(int test_num)
 
 	PSTEP("Buffer array allocated with 0 room size");
 
-	if (buf_get_used(buf) != 0 || buf_get_room_count(buf) != 0) {
-		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_get_used(buf), buf_get_room_count(buf));
+	if (buf_get_used_count(buf) != 0 || buf_get_room_count(buf) != 0) {
+		printf("0 size buffer: used (%ld) or room (%ld) != 0\n", buf_get_used_count(buf), buf_get_room_count(buf));
 		PFAIL("0 size buffer", test_num);
 		abort();
 	}
@@ -821,9 +815,9 @@ void test_buf_array_allocate_with_size(int test_num, int element_size, int num_o
 
 	int memory_to_expect = element_size * num_of_elements;
 
-	if (buf_get_used(buf) != 0) {
+	if (buf_get_used_count(buf) != 0) {
 		printf("Arr buffer: used expected 0, but it is (%ld)\n",
-			   buf_get_used(buf));
+			   buf_get_used_count(buf));
 		PFAIL("Arr buffer, used is wrong", test_num);
 		abort();
 	}

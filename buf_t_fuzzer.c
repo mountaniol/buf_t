@@ -24,7 +24,7 @@ int test_buf_strpack(char *data, size_t size)
 		return 1;
 	}
 
-	data1 = malloc(size);
+	data1 = calloc(size, 1);
 	memcpy(data1, data, size);
 	if (BUFT_OK != buf_set_data(buf, data1, size, size)) {
 		goto err1;
@@ -39,7 +39,7 @@ int test_buf_strpack(char *data, size_t size)
 		goto err1;
 	}
 
-	data2 = malloc(size);
+	data2 = calloc(size, 1);
 	memcpy(data2, data, size);
 	if (BUFT_OK != buf_set_data(buf2, data2, size, size)) {
 		goto err2;
@@ -128,7 +128,7 @@ int   test_buf_string(char *data, size_t size)
 		return 1;
 	}
 
-	data1 = malloc(size);
+	data1 = calloc(size, 1);
 	memcpy(data1, data, size);
 	if (BUFT_OK != buf_set_data(buf, data1, size, size)) {
 		goto err1;
@@ -143,7 +143,7 @@ int   test_buf_string(char *data, size_t size)
 		goto err1;
 	}
 
-	data2 = malloc(size);
+	data2 = calloc(size, 1);
 	memcpy(data2, data, size);
 	if (BUFT_OK != buf_set_data(buf2, data2, size, size)) {
 		goto err2;
@@ -194,7 +194,7 @@ int   test_buf_t(char *data, size_t size)
 		return 1;
 	}
 
-	data1 = malloc(size);
+	data1 = calloc(size, 1);
 	memcpy(data1, data, size);
 	if (BUFT_OK != buf_set_data(buf, data1, size, size)) {
 		goto err1;
@@ -252,7 +252,7 @@ int   test_buf_t(char *data, size_t size)
 		goto err1;
 	}
 
-	data2 = malloc(size);
+	data2 = calloc(size, 1);
 	memcpy(data2, data, size);
 	if (BUFT_OK != buf_set_data(buf2, data2, size, size)) {
 		goto err2;

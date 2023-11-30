@@ -264,7 +264,7 @@ ret_t buf_set_canary(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	return (BUFT_OK);
 }
 
-buf_s64_t buf_get_used(/*@temp@*//*@in@*/buf_t *buf)
+buf_s64_t buf_get_used_count(/*@temp@*//*@in@*/buf_t *buf)
 {
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 
@@ -346,9 +346,9 @@ ret_t buf_dec_used(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t dec)
 		return (-BUFT_BAD_BUFT_TYPE);
 	}
 
-	if (dec > buf_get_used(buf)) {
+	if (dec > buf_get_used_count(buf)) {
 		DE("Can not decrement buf->used: the dec > buf->used (%ld > %ld)\n",
-		   dec, buf_get_used(buf));
+		   dec, buf_get_used_count(buf));
 		return (-BUFT_OUT_OF_LIMIT_OP);
 	}
 
@@ -418,8 +418,8 @@ ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 	/* In case there is no space fpr CANARY tail,
 	   try to increase buffer space to keep CANARY */
 
-	if (buf_get_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE ||
-		buf_get_used(buf) == buf_get_room_count(buf)) {
+	if (buf_get_used_count(buf) < (buf_s64_t)BUF_T_CANARY_SIZE ||
+		buf_get_used_count(buf) == buf_get_room_count(buf)) {
 
 		/* Add room to keep CANARY tail */
 		int rc = buf_add_room(buf, BUF_T_CANARY_SIZE);
@@ -430,14 +430,14 @@ ret_t buf_force_canary(/*@temp@*//*@in@*/buf_t *buf)
 	}
 
 	/* If there no space to set CANARY tail, we abort the function */
-	if (buf_get_used(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
+	if (buf_get_used_count(buf) < (buf_s64_t)BUF_T_CANARY_SIZE) {
 		DE("Buffer is to small for CANARY word\n");
 		TRY_ABORT();
 		return (-BUFT_TOO_SMALL);
 	}
 
 	/* The buffer is big enough but all allocated data is occupied */
-	if (buf_get_used(buf) == buf_get_room_count(buf)) {
+	if (buf_get_used_count(buf) == buf_get_room_count(buf)) {
 		if (BUFT_OK != buf_dec_used(buf, BUF_T_CANARY_SIZE)) {
 			DE("Can not decrement a buffer used value");
 			return (-BUFT_ALLOCATE);
@@ -525,7 +525,7 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 
 	/* buf->used always <= buf->room */
 	/* TODO: not in case of CIRC buffer */
-	if (buf_get_used(buf) > buf_get_room_count(buf)) {
+	if (buf_get_used_count(buf) > buf_get_room_count(buf)) {
 		DE("Invalid buf: buf->used > buf->room\n");
 		TRY_ABORT();
 		return (-BUFT_BAD_USED);
@@ -560,8 +560,8 @@ static ret_t buf_common_is_valid(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	/* TODO: Is it really a wrong situation? We can lovk and unlock the buffer */
 	/* In Read-Only buffer buf->room must be == bub->used */
 	if ((BUFT_YES == buf_is_immutable(buf)) &&
-		(buf_get_room_count(buf) != buf_get_used(buf))) {
-		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_get_used(buf), buf_get_room_count(buf));
+		(buf_get_room_count(buf) != buf_get_used_count(buf))) {
+		DE("Warning: in Read-Only buffer buf->used (%ld) != buf->room (%ld)\n", buf_get_used_count(buf), buf_get_room_count(buf));
 		TRY_ABORT();
 		return (-BUFT_IMMUTABLE_DAMAGED);
 	}
@@ -878,7 +878,7 @@ static ret_t buf_increase(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t n
 	buf_s64_t size_to_clean = 0;
 
 	TESTP(buf, -BUFT_NULL_POINTER);
-	buf_s64_t buf_used_size = buf_get_used(buf);
+	buf_s64_t buf_used_size = buf_get_used_count(buf);
 	buf_s64_t buf_room_size = buf_get_room_count(buf);
 
 	if (buf_room_size >= new_size) {
@@ -888,7 +888,7 @@ static ret_t buf_increase(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t n
 	}
 
 	/* Allocate the new buffer */
-	char *tmp = malloc(new_size);
+	char *tmp = zmalloc(new_size);
 
 	if (NULL == tmp) {
 		DE("Could not allocate a new buffer, asked size is %ld\n", new_size);
@@ -1054,11 +1054,32 @@ ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect)
 		return (-BUFT_BAD_SIZE);
 	}
 
-	if (buf_get_used(buf) + expect <= buf_get_room_count(buf)) {
+	if (buf_get_used_count(buf) + expect <= buf_get_room_count(buf)) {
 		return (BUFT_OK);
 	}
 
 	return (buf_add_room(buf, expect));
+}
+
+ret_t buf_fill_with_zeros(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
+{
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+
+	char * data_ptr = buf_get_data_ptr(buf);
+	buf_s64_t room_count = buf_get_room_count(buf);
+
+	if (NULL == data_ptr) {
+		DE("Buffer does not have data\n");
+		return (-BUFT_NULL_DATA);
+	}
+
+	if (0 == room_count) {
+		DE("Buff data is not NULL but buf room count is 0\n");
+		return buf_is_valid(buf);
+	}
+
+	memset(data_ptr, 0, room_count);
+	return BUFT_OK;
 }
 
 ret_t buf_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
@@ -1210,7 +1231,7 @@ ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@*/const
 	}
 
 	/*@ignore@*/
-	memcpy(buf->data + buf_get_used(buf), new_data, size);
+	memcpy(buf->data + buf_get_used_count(buf), new_data, size);
 	/*@end@*/
 	if (BUFT_OK != buf_inc_used(buf, size)) {
 		DE("Can not increment 'used' of a budder\n");
@@ -1319,13 +1340,13 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 	}
 
 	/*** Should we really pack it? */
-	if (buf_get_used(buf) == buf_get_room_count(buf)) {
+	if (buf_get_used_count(buf) == buf_get_room_count(buf)) {
 		/* No need to pack it */
 		return (BUFT_OK);
 	}
 
 	/* Here we shrink the buffer */
-	new_size = buf_get_used(buf);
+	new_size = buf_get_used_count(buf);
 	if (BUFT_YES == buf_is_canary(buf)) {
 		new_size += BUF_T_CANARY_SIZE;
 	}
@@ -1335,7 +1356,7 @@ ret_t buf_pack(/*@temp@*//*@in@*//*@special@*/buf_t *buf)
 		return (-BUFT_BAD);
 	}
 
-	if (BUFT_OK != buf_set_room_count(buf, buf_get_used(buf))) {
+	if (BUFT_OK != buf_set_room_count(buf, buf_get_used_count(buf))) {
 		DE("Can not set a new room value to the buffer\n");
 		return (-BUFT_BAD);
 	}
@@ -1435,7 +1456,7 @@ size_t buf_recv(/*@temp@*//*@in@*//*@special@*/buf_t *buf, const int socket, con
 		return (-ENOMEM);
 	}
 
-	received = recv(socket, buf->data + buf_get_used(buf), expected, flags);
+	received = recv(socket, buf->data + buf_get_used_count(buf), expected, flags);
 	if (received > 0) {
 		if (BUFT_OK != buf_inc_used(buf, received)) {
 			DE("Can not increment 'used'");
@@ -1489,10 +1510,12 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 		}
 	}
 
-	int *tmp = malloc(TMP_BUF_SIZE);
+	char *tmp = zmalloc(TMP_BUF_SIZE);
+	TESTP(buf, NULL);
 
 	do {
 		rc = read(fd, tmp, TMP_BUF_SIZE);
+
 		if (rc < 0) {
 			DE("Error on file read: asked %lu, read %d\n", buf_get_room_count(buf), rc);
 			rc = close(fd);
@@ -1509,7 +1532,11 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 			return (NULL);
 		}
 
-		buf_add(buf, tmp, rc);
+		rc = buf_add(buf, tmp, rc);
+		if (BUFT_OK != rc) {
+			DE("Can not add memoty to buf string\n");
+			abort();
+		}
 	} while (TMP_BUF_SIZE == rc);
 
 	free(tmp);

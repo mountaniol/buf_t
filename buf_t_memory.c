@@ -8,10 +8,7 @@
 
 /*@null@*/ /*@only@*/void *zmalloc(size_t sz)
 {
-	/*@only@*/void *ret = malloc(sz);
-	if (NULL == ret) return (NULL);
-	memset(ret, 0, sz);
-	return (ret);
+	return calloc(sz, 1);
 }
 
 /*@null@*/ /*@only@*/void *zmalloc_any(size_t asked, size_t *allocated)
@@ -19,7 +16,7 @@
 	/*@only@*//*@in@*/void *ret = NULL;
 
 	while (NULL == ret && asked > 0) {
-		ret = zmalloc(asked);
+		ret = calloc(asked, 1);
 		if (NULL != ret) {
 			*allocated = asked;
 			return (ret);

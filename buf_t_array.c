@@ -181,7 +181,7 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 		}
 
 		/* Test buf->used is 0 */
-		if (buf_get_used(buf) > 0) {
+		if (buf_get_used_count(buf) > 0) {
 			DE("buf->data is NULL buf buf->used > 0\n");
 			TRY_ABORT();
 			return (-ECANCELED);
@@ -322,39 +322,12 @@ ret_t buf_arr_add(buf_t *buf, const void *new_data_ptr)
 	return buf_arr_add_members(buf, new_data_ptr, 1);
 }
 
-/* Remove members from buffer: from 'from_memeber' (inclusive), number of members */
-ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_t num_of_new_members)
+
+static ret_t _buf_arr_shift_mem(buf_t *buf, buf_s32_t from_member, buf_s32_t num_to_remove)
 {
-	TESTP_BUF_DATA(buf);
-
-	/* The start member must be > 0 */
-	if (from_member < 0) {
-		DE("The from_member < 0: %d\n", num_of_new_members);
-		TRY_ABORT();
-		return (-ECANCELED);
-	}
-
-	/* The num_of_new_members of member to remove must be > 0 */
-	if (num_of_new_members < 1) {
-		DE("The num_of_new_members < 1: %d\n", num_of_new_members);
-		TRY_ABORT();
-		return (-ECANCELED);
-	}
-
-
-	/* Test we have enough members to delete */
-	if (_buf_arr_members(buf) - from_member < num_of_new_members) {
-		DE("Asked to delete more members than possible: members in array %d, askeed to delete from %d amount %d\n",
-		   _buf_arr_members(buf), from_member, num_of_new_members);
-		TRY_ABORT();
-		return (-ECANCELED);
-	}
-
-	/* Now we move all members to the new position */
-
 
 	/* Size of memory to me removed */
-	size_t memory_to_remove_size = _buf_arr_member_size(buf) * num_of_new_members;
+	size_t memory_to_remove_size = _buf_arr_member_size(buf) * num_to_remove;
 
 	/* Move to: the memory where the first member to remove */
 	char   *move_to              = buf->data + (from_member * _buf_arr_member_size(buf));
@@ -366,9 +339,63 @@ ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_
 	/* Move memory */
 	memmove(move_to, move_from, memory_to_remove_size);
 
-	/* Decrease number of members in the array */
-	buf->arr.members -= num_of_new_members;
 	return BUFT_OK;
+}
+
+/* Remove members from buffer: from 'from_memeber' (inclusive), number of members */
+ret_t buf_arr_rm_members(buf_t *buf, const buf_s32_t from_member, const buf_s32_t num_to_remove)
+{
+	TESTP_BUF_DATA(buf);
+
+	/* The start member must be > 0 */
+	if (from_member < 0) {
+		DE("The from_member < 0: %d\n", num_to_remove);
+		TRY_ABORT();
+		return (-ECANCELED);
+	}
+
+	/* The num_of_new_members of member to remove must be > 0 */
+	if (num_to_remove < 1) {
+		DE("The num_of_new_members < 1: %d\n", num_to_remove);
+		TRY_ABORT();
+		return (-ECANCELED);
+	}
+
+	buf_s32_t members = _buf_arr_members(buf);
+
+	/* Test we have enough members to delete */
+
+	/* Calculate how members there after the first member to remove, including the first member */
+	buf_s32_t after_first = members - from_member;
+	if (after_first < num_to_remove) {
+		DE("Asked to delete more members than possible: members in array %d, askeed to delete from %d amount %d\n",
+		   members, from_member, num_to_remove);
+		TRY_ABORT();
+		return (-ECANCELED);
+	}
+
+	/* A special case: there no members after the last member; in this case we do not move memory,
+	   just decrease hnumber of members */
+
+	buf_s32_t tail_members = (from_member + num_to_remove) - members;
+	
+	/* Now we move all members to the new position */
+
+	/* Decrease number of members in the array, only in case there more members in tail that should be moved */
+	if (tail_members > 0) {
+		ret_t rc = _buf_arr_shift_mem(buf, from_member, num_to_remove);
+
+		if (BUFT_OK != rc) {
+			DE("Could not shift memory\n");
+			TRY_ABORT();
+			return -1;
+		}
+	}
+
+	/* Decrease number of members in the array */
+	buf->arr.members -= num_to_remove;
+	return BUFT_OK;
+
 }
 
 ret_t buf_arr_rm(buf_t *buf, const buf_s32_t member_index)

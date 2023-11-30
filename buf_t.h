@@ -434,6 +434,12 @@ extern ret_t buf_add_room(/*@temp@*//*@in@*//*@special@*/buf_t *buf, buf_s64_t s
 extern ret_t buf_test_room(/*@temp@*//*@in@*/buf_t *buf, buf_s64_t expect);
 
 /**
+ * @brief Feel internal buffer with zeros
+ * @param buf_t* buf   Buffer to fill with zeros
+ * @return ret_t BUFT_OK on success, else a negative error code
+ */
+extern ret_t buf_fill_with_zeros(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
+/**
  * @brief Free buf; if buf->data is not empty, free buf->data
  * @param buf_t * buf Buffer to remove
  * @return int BUFT_OK on success
@@ -462,7 +468,7 @@ extern ret_t buf_add(/*@temp@*//*@in@*//*@special@*/buf_t *buf, /*@temp@*//*@in@
  * @return ssize_t Number of bytes used on success
  * 	EINVAL if the 'buf' == NULL
  */
-extern buf_s64_t buf_get_used(/*@temp@*//*@in@*/buf_t *buf);
+extern buf_s64_t buf_get_used_count(/*@temp@*//*@in@*/buf_t *buf);
 
 /**
  * @brief Set a new value of the buf->used
