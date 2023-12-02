@@ -1524,6 +1524,7 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 				TRY_ABORT();
 			}
 
+			/* Free the buffer before return with error */
 			rc = buf_free(buf);
 			if (BUFT_OK != rc) {
 				DE("Could not release buf_t\n");
@@ -1532,9 +1533,9 @@ buf_t *buf_from_file(const char *filename, buf_t_flags_t buf_type)
 			return (NULL);
 		}
 
-		rc = buf_add(buf, tmp, rc);
-		if (BUFT_OK != rc) {
-			DE("Can not add memoty to buf string\n");
+		const ret_t rc_add = buf_add(buf, tmp, rc);
+		if (BUFT_OK != rc_add) {
+			DE("Can not add memoty to buf string: error %d | %s\n", rc_add, buf_error_code_to_string(rc_add));
 			abort();
 		}
 	} while (TMP_BUF_SIZE == rc);

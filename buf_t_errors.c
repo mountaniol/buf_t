@@ -43,7 +43,7 @@
 #endif 
 
 
-const char *buf_error_code_to_string(int er)
+char *buf_error_code_to_string(int er)
 {
 	switch(abs(er)) {
 	case BUFT_YES: return "BUFT_YES";

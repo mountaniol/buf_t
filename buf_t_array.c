@@ -31,7 +31,7 @@ buf_s32_t buf_arr_get_members_count(buf_t *buf)
 
 	/* Test that this is an array buffer */
 	if (BUFT_NO == buf_type_is_array(buf)) {
-		DE("Buffer is not an array buffer");
+		DE("Buffer is not an array buffer\n");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -46,7 +46,7 @@ ret_t buf_set_arr_members_count(buf_t *buf, buf_s32_t new_members)
 
 	/* Test that this is an array buffer */
 	if (BUFT_NO == buf_type_is_array(buf)) {
-		DE("Buffer is not an array buffer");
+		DE("Buffer is not an array buffer\n");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -74,7 +74,7 @@ buf_s32_t buf_arr_get_member_size(buf_t *buf)
 
 	/* Test that this is an array buffer */
 	if (BUFT_NO == buf_type_is_array(buf)) {
-		DE("Buffer is not an array buffer");
+		DE("Buffer is not an array buffer\n");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -89,7 +89,7 @@ ret_t buf_set_arr_member_size(buf_t *buf, buf_s32_t new_size)
 
 	/* Test that this is an array buffer */
 	if (BUFT_NO == buf_type_is_array(buf)) {
-		DE("Buffer is not an array buffer");
+		DE("Buffer is not an array buffer\n");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -109,7 +109,7 @@ buf_s64_t buf_arr_get_used(buf_t *buf)
 	/* Test that this is an array buffer;
 	   if it is not, cancel the operation */
 	if (BUFT_NO == buf_type_is_array(buf)) {
-		DE("Buffer is not an array buffer");
+		DE("Buffer is not an array buffer\n");
 		TRY_ABORT();
 		return (-ECANCELED);
 	}
@@ -198,13 +198,13 @@ ret_t buf_array_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	/* TEST: ->data is not NULL, than neither arr.amount not arr.size could be < 0 */
 	if (BUFT_NO == buf_data_is_null(buf)) {
 		if (buf_arr_get_members_count(buf) < 0) {
-			DE("Value of 'members' < 0");
+			DE("Value of 'members' < 0\n");
 			TRY_ABORT();
 			return (-ECANCELED);
 		}
 
 		if (buf_arr_get_member_size(buf) < 0) {
-			DE("Value of 'member size' < 0");
+			DE("Value of 'member size' < 0\n");
 			TRY_ABORT();
 			return (-ECANCELED);
 		}
@@ -265,7 +265,7 @@ ret_t buf_arr_add_members(buf_t *buf, const void *new_data_ptr, const buf_s32_t 
 
 	/* Number of element to copy must be > 0 value */
 	if (num_of_new_members < 1) {
-		DE("Illegal number of new elements, < 1 (%d)", num_of_new_members);
+		DE("Illegal number of new elements, < 1 (%d)\n", num_of_new_members);
 		TRY_ABORT();
 		return -ECANCELED;
 	}

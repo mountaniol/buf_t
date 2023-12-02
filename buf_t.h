@@ -186,9 +186,14 @@ typedef enum {
 	BUFT_STRING_NO_NULL,  /* Cannot close opened file */
 } buf_t_error_t;
 
-const char *buf_error_code_to_string(int er);
-
-
+/**
+ * @author Sebastian Mountaniol (12/2/23)
+ * @brief Print string representation of an error
+ * @param buf_t_error_t er    Error code, type buf_t_error_t
+ * @return char* A string describing the error
+ * @details 
+ */
+extern char *buf_error_code_to_string(int er);
 
 typedef /*@abstract@*/ struct buf_t_struct buf_t;
 
@@ -971,6 +976,17 @@ extern /*@null@*/  buf_t *buf_from_string(/*@in@*//*@temp@*/char *str, const buf
 extern ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *new_data, const buf_s64_t size);
 
 /**
+ * @brief Add string from string buffer from another string
+ *  	  buffer
+ * @param buf_t* buf_to  Buffer to add string
+ * @param const buf_t* buf_from Buffer to add string from
+ * @return ret_t BUFT_OK on success, a negative error code
+ *  	   otherwise
+ * @details This is an wrapper of buf_str_add()
+ */
+extern ret_t buf_str_add_buf(/*@in@*//*@temp@*/buf_t *buf_to, buf_t *buf_from);
+
+/**
  * @brief Experimental: detect used length of string buffer
  * @param buf - Buffer to detect string length
  * @return ret_t OK on success, 
@@ -1182,7 +1198,6 @@ ret_t buf_arr_member_copy(buf_t *buf, const buf_s32_t member_index, void *dest, 
  *  	   error
  */
 extern ret_t buf_arr_clean(/*@temp@*//*@in@*//*@special@*/buf_t *buf);
-
 
 /* Additional defines */
 #ifdef BUF_DEBUG

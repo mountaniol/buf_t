@@ -28,7 +28,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 	/* If the buf is string the room must be greater than used */
 	/* If there is a data, then:
 	   the room must be greater than used, because we do not count terminating \0 */
-	if ((BUFT_NO == buf_data_is_null(buf)) && 
+	if ((BUFT_NO == buf_data_is_null(buf)) &&
 		(buf_get_room_count(buf) <= buf_get_used_count(buf))) {
 		DE("Invalid STRING buf: buf->used (%ld) >= buf->room (%ld)\n", buf_get_used_count(buf), buf_get_room_count(buf));
 		TRY_ABORT();
@@ -37,7 +37,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 
 	/* For string buffers only: check that the string is null terminated */
 	/* If the 'used' area not '\0' terminated - invalid */
-	if ((BUFT_NO == buf_data_is_null(buf)) && 
+	if ((BUFT_NO == buf_data_is_null(buf)) &&
 		('\0' != *((char *)buf_get_data_ptr(buf) + buf_get_used_count(buf)))) {
 		DE("Invalid STRING buf: no '0' terminated\n");
 		D0("used = %ld, room = %ld, last character = |%c|, string = %s\n", buf_get_used_count(buf), buf_get_room_count(buf), *(buf->data + buf_get_used_count(buf)), buf->data);
@@ -69,7 +69,7 @@ ret_t buf_str_is_valid(/*@in@*//*@temp@*/buf_t *buf)
 		DE("Buf string is invalid: error %d: %s\n", rc, buf_error_code_to_string(rc));
 		TRY_ABORT();
 		buf_free(buf);
-		return(NULL);
+		return (NULL);
 	}
 	return (buf);
 }
@@ -123,19 +123,22 @@ err:
 
 ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *new_data, const buf_s64_t size)
 {
-	size_t new_size;
+	size_t    new_size;
+	buf_s64_t old_size;
 
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
 	T_RET_ABORT(new_data, -EINVAL);
 
+	old_size = buf_get_used_count(buf);
+
 	new_size = size;
 	/* If this buffer is a string buffer, we should consider \0 after string. If this buffer is empty,
 	   we add +1 for the \0 terminator. If the buffer is not empty, we reuse existing \0 terminator */
-	if (buf_get_used_count(buf) == 0) {
+	if (0 == old_size) {
 		new_size += sizeof(char);
 	}
 
-	/* Add room if needed: buf_test_room() adds room if needed */
+	/* Add room if needed: buf_test_room() adds room if needed to hold 'new_size' bytes of additional data */
 	if (0 != buf_test_room(buf, new_size)) {
 		DE("Can't add room into buf_t\n");
 		TRY_ABORT();
@@ -144,8 +147,8 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 
 	/* All done, now add new data into the buffer */
 	/*@ignore@*/
-	char * memory_to_copy = buf_get_data_ptr(buf);
-	memory_to_copy += buf_get_used_count(buf);
+	char *memory_to_copy = buf_get_data_ptr(buf);
+	memory_to_copy += old_size;
 	memcpy(memory_to_copy, new_data, size);
 	/*@end@*/
 	if (BUFT_OK != buf_inc_used(buf, size)) {
@@ -156,8 +159,120 @@ ret_t buf_str_add(/*@in@*//*@temp@*/buf_t *buf, /*@in@*//*@temp@*/const char *ne
 	return (BUFT_OK);
 }
 
+ret_t buf_str_add_buf(/*@in@*//*@temp@*/buf_t *buf_to, buf_t *buf_from)
+{
+	TESTP(buf_to, -BUFT_NULL_POINTER);
+	TESTP(buf_from, -BUFT_NULL_POINTER);
+	TESTP(buf_from->data, -BUFT_NULL_POINTER);
+	return buf_str_add(buf_to, buf_from->data, buf_from->used);
+}
+
+#define GO_RIGHT (0)
+#define GO_LEFT (1)
+/* Reimplemented as binary search */
 ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 {
+	int       step                 = 0;
+	buf_s64_t calculated_used_size = 0;
+	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
+
+	char *buf_data = buf_get_data_ptr(buf);
+
+	if (NULL == buf_data) {
+		DE("No data in the buffer");
+		return (-BUFT_NULL_POINTER);
+	}
+
+	buf_s64_t room_size = buf_get_room_count(buf);
+
+	/* If the buf is empty - return with error */
+	if (0 == room_size) {
+		DE("Tryed to detect used in an empty buffer\n");
+		return (-ECANCELED);
+	}
+
+	/* Changed to 1 when the search completed */
+	char      completed      = 0;
+
+	/* Where we go next, left  or righ? */
+	char      go_next        = GO_RIGHT;
+
+	/* We start from the beginning of the buffer */
+	buf_s64_t next_offset    = 0;
+
+	do {
+		step++;
+
+		DD("Step %d, offset %ld, should go: %s\n", step, next_offset, (GO_RIGHT == go_next) ? "right":"left");;
+
+		/* We increase or decrease the go_next offset, every step the increase/decrease is smaller and smaller */
+		if (GO_RIGHT == go_next) {
+			next_offset += room_size / (step * 2);
+		} else {
+			next_offset -= room_size / (step * 2);
+		}
+
+		/*** CASE 1: The current offset is 0 byte;  we should go left */
+
+		/* Not yet used memory , we should go left */
+		if (*(buf_data + next_offset) == '\0') {
+			if (*(buf_data + next_offset - 1) != '\0') {
+				/* We found that this is \0 after the last character */
+				calculated_used_size = next_offset;
+				completed = 1;
+
+				DD("Found the end, size: %ld : %X %X\n", calculated_used_size, *(buf_data + next_offset - 1), *(buf_data + next_offset));
+				break;
+			}
+
+			/* No, on the left is still 0, we should continue */
+			/**/
+			next_offset -= (room_size / step);
+			go_next = GO_LEFT;
+			continue;
+		} /* End of 0 case; we contunue below if found character is not 0 */
+
+		/*** CASE 2: The current offset is not 0 byte; we should go right */
+
+		/* If we here, it means the next_offset points to not 0 byte; we check a byte on right */
+		/* In the previous case we tested buf_data + next_offset and we know it is not 0 */
+		if (*(buf_data + next_offset + 1) == 0) {
+			/* We found that this is \0 after the last character */
+			calculated_used_size = next_offset + 1;
+			completed = 1;
+			DD("Found the end, size: %ld, %X %X\n",calculated_used_size, *(buf_data + next_offset), *(buf_data + next_offset + 1));
+			break;
+		}
+
+		next_offset += (room_size / step);
+		go_next = GO_RIGHT;
+
+	} while (0 == completed);
+
+	/* If the calculated used_size is te same as set in the buffer - nothing to do */
+	if (calculated_used_size == buf_get_used_count(buf)) {
+		DDD0("No need new string size: %ld -> %ld\n", buf_get_used_count(buf), calculated_used_size);
+		return BUFT_OK;
+	}
+
+	DDD0("Setting new string size: %ld -> %ld\n", buf_get_used_count(buf), calculated_used_size);
+	/* No, the new size if less than the current */
+	if (BUFT_OK != buf_set_used(buf, calculated_used_size)) {
+		DE("Can not set a new 'used' value to the buffer\n");
+		return (-BUFT_BAD);
+	}
+
+	DD("Found used count in %d steps\n", step);
+	return (BUFT_OK);
+}
+
+/* We don't need it anymore */
+#undef GO_RIGHT
+#undef GO_LEFT
+
+/* TODO: Make it logarithmoc search */
+#if 0 /* SEB */
+ret_t buf_str_detect_used_old(/*@in@*//*@temp@*/buf_t *buf){
 	char      *_buf_data;
 	buf_s64_t calculated_used_size;
 	T_RET_ABORT(buf, -BUFT_NULL_POINTER);
@@ -168,8 +283,8 @@ ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 		return (-ECANCELED);
 	}
 
-	/* We start with the current 'used' size */
-	calculated_used_size = buf_get_used_count(buf);
+	/* We start with the current 'room' size */
+	calculated_used_size = buf_get_room_count(buf);
 
 	/* Search for the first NOT 0 character - this is the end of 'used' area */
 	/* TODO: Replace this with a binary search:
@@ -200,6 +315,8 @@ ret_t buf_str_detect_used(/*@in@*//*@temp@*/buf_t *buf)
 	}
 	return (BUFT_OK);
 }
+#endif
+
 
 ret_t buf_str_pack(/*@temp@*//*@in@*/buf_t *buf)
 {
